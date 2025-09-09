@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { ArrowRight, Star, ShoppingBag, Plus, Share2, Check } from 'lucide-react';
 import { supabase, type Product } from '../lib/supabase';
 import { useCart } from '../contexts/CartContext';
@@ -19,6 +20,33 @@ export default function HomePage() {
   const [copiedProductId, setCopiedProductId] = useState<string | null>(null);
   const [showAddToCartSuccessId, setShowAddToCartSuccessId] = useState<string | null>(null);
   const { addToCart } = useCart();
+
+  // Structured data for SEO
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "UnboxTrendz",
+    "description": "Discover amazing products across toys, gifts, home decor, jewellery, gadgets, and stationery",
+    "url": "https://unboxtrendz.in",
+    "logo": "https://unboxtrendz.in/logo.png",
+    "sameAs": [
+      "https://www.facebook.com/unboxtrendz",
+      "https://www.instagram.com/unboxtrendz"
+    ]
+  };
+
+  const localBusinessSchema = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": "UnboxTrendz",
+    "description": "Online store for toys, gifts, home decor, jewellery, gadgets, and stationery",
+    "address": {
+      "@type": "PostalAddress",
+      "addressCountry": "IN"
+    },
+    "areaServed": "India",
+    "priceRange": "₹₹"
+  };
 
   useEffect(() => {
     fetchFeaturedProducts();
@@ -77,15 +105,28 @@ export default function HomePage() {
 
   return (
     <div>
+      <Helmet>
+        <title>UnboxTrendz - Buy Toys, Gifts, Home Decor, Jewellery & Gadgets Online</title>
+        <meta name="description" content="Shop amazing toys, gifts, home decor, jewellery, gadgets, and stationery at UnboxTrendz. Discover trendy products with fast shipping across India. Unbox your trend today!" />
+        <meta name="keywords" content="toys online India, gifts online shopping, home decor items online, online jewellery store, gadgets online India, stationery online shopping" />
+        <link rel="canonical" href="https://unboxtrendz.in/" />
+        <script type="application/ld+json">
+          {JSON.stringify(organizationSchema)}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify(localBusinessSchema)}
+        </script>
+      </Helmet>
+
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold text-gray-800 mb-4">
-              Welcome to <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">UnboxTrendz</span>
+              Discover Amazing <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">Toys, Gifts & Trendy Products</span> Online
             </h1>
             <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-              Discover amazing products across toys, gifts, home decor, jewellery, gadgets, and stationery at UnboxTrendz. Unbox your trend today!
+              Shop premium toys, unique gifts, stylish home decor, beautiful jewellery, latest gadgets, and quality stationery at UnboxTrendz. Fast shipping across India. Unbox your trend today!
             </p>
             <Link
               to="/shop"
@@ -104,7 +145,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-800 mb-4">Shop by Category</h2>
-            <p className="text-gray-600">Explore our diverse range of trending products</p>
+            <p className="text-gray-600">Explore our diverse range of trending products across India's favorite categories</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
             {categories.map((category) => (
@@ -157,6 +198,7 @@ export default function HomePage() {
                       <img
                         src={product.images[0]}
                         alt={product.name}
+                        loading="lazy"
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />
                     ) : (
