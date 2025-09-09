@@ -22,6 +22,8 @@ export default function ShopPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [copiedProductId, setCopiedProductId] = useState<string | null>(null);
   const [showAddToCartSuccessId, setShowAddToCartSuccessId] = useState<string | null>(null);
+  const [targetProductId, setTargetProductId] = useState<string | null>(null);
+  const [highlightedProductId, setHighlightedProductId] = useState<string | null>(null);
   const { addToCart } = useCart();
 
   useEffect(() => {
@@ -34,12 +36,41 @@ export default function ShopPage() {
     if (category) {
       setSelectedCategory(category);
     }
-    // If there's a product_id in the URL, we could scroll to it or highlight it
     if (productId) {
-      // Optional: Add logic to highlight or scroll to specific product
-      console.log('Shared product ID:', productId);
+      setTargetProductId(productId);
     }
   }, [searchParams]);
+
+  // Scroll to and highlight specific product when products are loaded
+  useEffect(() => {
+    if (products.length > 0 && targetProductId && !loading) {
+      const targetProduct = products.find(product => product.id === targetProductId);
+      
+      if (targetProduct) {
+        // Small delay to ensure DOM is fully rendered
+        setTimeout(() => {
+          const element = document.getElementById(`product-${targetProductId}`);
+          if (element) {
+            element.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center' 
+            });
+            
+            // Highlight the product
+            setHighlightedProductId(targetProductId);
+            
+            // Remove highlight after 3 seconds
+            setTimeout(() => {
+              setHighlightedProductId(null);
+            }, 3000);
+          }
+        }, 100);
+      }
+      
+      // Clear the target product ID after processing
+      setTargetProductId(null);
+    }
+  }, [products, targetProductId, loading]);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -224,7 +255,15 @@ export default function ShopPage() {
           ) : products.length > 0 ? (
             <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
               {products.map((product) => (
-                <div key={product.id} className={`bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group ${viewMode === 'list' ? 'flex' : ''}`}>
+                <div 
+                  key={product.id} 
+                  id={`product-${product.id}`}
+                  className={`bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group ${viewMode === 'list' ? 'flex' : ''} ${
+                    highlightedProductId === product.id 
+                      ? 'ring-4 ring-blue-500 ring-opacity-50 shadow-2xl transform scale-105' 
+                      : ''
+                  }`}
+                >
                   <div className={`relative overflow-hidden ${viewMode === 'grid' ? 'h-64' : 'w-32 h-32 flex-shrink-0'}`}>
                     {product.images && product.images.length > 0 ? (
                       <img
@@ -242,6 +281,11 @@ export default function ShopPage() {
                     </div>
                   </div>
                   <div className="p-6 flex-1">
+                    {highlightedProductId === product.id && (
+                      <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-2 text-center">
+                        <p className="text-blue-700 text-sm font-medium">📍 Shared Product</p>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-blue-600 font-medium">{product.category}</span>
                       <span className="text-lg font-bold text-gray-800">₹{product.price}</span>
