@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Minus, Trash2, ShoppingCart, User, Phone, Mail, MapPin } from 'lucide-react';
+import { X, Plus, Minus, Trash2, ShoppingCart, User, Phone, Mail, MapPin, Home, Landmark, Building, CreditCard } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 
 export default function CartModal() {
@@ -7,8 +7,14 @@ export default function CartModal() {
   const [customerDetails, setCustomerDetails] = useState({
     name: '',
     phone: '',
+    alternatePhone: '',
     email: '',
-    address: '',
+    houseNo: '',
+    landmark: '',
+    city: '',
+    state: '',
+    pincode: '',
+    paymentMode: 'cod',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -26,8 +32,10 @@ export default function CartModal() {
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!customerDetails.name.trim() || !customerDetails.phone.trim() || !customerDetails.address.trim()) {
-      alert('Please fill in all required fields (Name, Phone, Address)');
+    if (!customerDetails.name.trim() || !customerDetails.phone.trim() || 
+        !customerDetails.houseNo.trim() || !customerDetails.city.trim() || 
+        !customerDetails.state.trim() || !customerDetails.pincode.trim()) {
+      alert('Please fill in all required fields (Name, Phone, House No., City, State, Pincode)');
       return;
     }
 
@@ -44,10 +52,24 @@ export default function CartModal() {
       message += ` *Customer Details:*\n`;
       message += `Name: ${customerDetails.name}\n`;
       message += `Phone: ${customerDetails.phone}\n`;
+      if (customerDetails.alternatePhone) {
+        message += `Alternate Phone: ${customerDetails.alternatePhone}\n`;
+      }
       if (customerDetails.email) {
         message += `Email: ${customerDetails.email}\n`;
       }
-      message += `Address: ${customerDetails.address}\n\n`;
+      
+      message += `\n *Delivery Address:*\n`;
+      message += `House No.: ${customerDetails.houseNo}\n`;
+      if (customerDetails.landmark) {
+        message += `Landmark: ${customerDetails.landmark}\n`;
+      }
+      message += `City: ${customerDetails.city}\n`;
+      message += `State: ${customerDetails.state}\n`;
+      message += `Pincode: ${customerDetails.pincode}\n\n`;
+      
+      message += ` *Payment Mode:*\n`;
+      message += `${customerDetails.paymentMode === 'cod' ? 'Cash on Delivery (COD)' : 'WhatsApp Payment'}\n\n`;
       
       message += ` *Order Items:*\n`;
       state.items.forEach((item, index) => {
@@ -70,7 +92,18 @@ export default function CartModal() {
       // Clear cart and form after successful order
       setTimeout(() => {
         clearCart();
-        setCustomerDetails({ name: '', phone: '', email: '', address: '' });
+        setCustomerDetails({ 
+          name: '', 
+          phone: '', 
+          alternatePhone: '',
+          email: '', 
+          houseNo: '',
+          landmark: '',
+          city: '',
+          state: '',
+          pincode: '',
+          paymentMode: 'cod'
+        });
         setShowSuccess(false);
         closeCart();
       }, 2000);
@@ -206,19 +239,35 @@ export default function CartModal() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Phone className="inline h-4 w-4 mr-1" />
-                    Phone Number *
-                  </label>
-                  <input
-                    type="tel"
-                    value={customerDetails.phone}
-                    onChange={(e) => setCustomerDetails({ ...customerDetails, phone: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter your phone number"
-                    required
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <Phone className="inline h-4 w-4 mr-1" />
+                      Phone Number *
+                    </label>
+                    <input
+                      type="tel"
+                      value={customerDetails.phone}
+                      onChange={(e) => setCustomerDetails({ ...customerDetails, phone: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter your phone number"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <Phone className="inline h-4 w-4 mr-1" />
+                      Alternate Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={customerDetails.alternatePhone}
+                      onChange={(e) => setCustomerDetails({ ...customerDetails, alternatePhone: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter alternate phone number"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -235,19 +284,124 @@ export default function CartModal() {
                   />
                 </div>
 
+                {/* Delivery Address Section */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <h4 className="text-md font-semibold text-gray-800 mb-4 flex items-center">
                     <MapPin className="inline h-4 w-4 mr-1" />
-                    Delivery Address *
+                    Delivery Address
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <Home className="inline h-4 w-4 mr-1" />
+                        House No. *
+                      </label>
+                      <input
+                        type="text"
+                        value={customerDetails.houseNo}
+                        onChange={(e) => setCustomerDetails({ ...customerDetails, houseNo: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="House/Flat/Building No."
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <Landmark className="inline h-4 w-4 mr-1" />
+                        Landmark
+                      </label>
+                      <input
+                        type="text"
+                        value={customerDetails.landmark}
+                        onChange={(e) => setCustomerDetails({ ...customerDetails, landmark: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Near landmark (optional)"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <Building className="inline h-4 w-4 mr-1" />
+                        City *
+                      </label>
+                      <input
+                        type="text"
+                        value={customerDetails.city}
+                        onChange={(e) => setCustomerDetails({ ...customerDetails, city: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="City"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <Building className="inline h-4 w-4 mr-1" />
+                        State *
+                      </label>
+                      <input
+                        type="text"
+                        value={customerDetails.state}
+                        onChange={(e) => setCustomerDetails({ ...customerDetails, state: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="State"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <MapPin className="inline h-4 w-4 mr-1" />
+                        Pincode *
+                      </label>
+                      <input
+                        type="text"
+                        value={customerDetails.pincode}
+                        onChange={(e) => setCustomerDetails({ ...customerDetails, pincode: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Pincode"
+                        pattern="[0-9]{6}"
+                        maxLength={6}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Mode Section */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <CreditCard className="inline h-4 w-4 mr-1" />
+                    Payment Mode *
                   </label>
-                  <textarea
-                    value={customerDetails.address}
-                    onChange={(e) => setCustomerDetails({ ...customerDetails, address: e.target.value })}
-                    rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter your complete delivery address"
-                    required
-                  />
+                  <div className="space-y-3">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="paymentMode"
+                        value="cod"
+                        checked={customerDetails.paymentMode === 'cod'}
+                        onChange={(e) => setCustomerDetails({ ...customerDetails, paymentMode: e.target.value })}
+                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="ml-3 text-sm font-medium text-gray-700">Cash on Delivery (COD)</span>
+                    </label>
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="paymentMode"
+                        value="whatsapp"
+                        checked={customerDetails.paymentMode === 'whatsapp'}
+                        onChange={(e) => setCustomerDetails({ ...customerDetails, paymentMode: e.target.value })}
+                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="ml-3 text-sm font-medium text-gray-700">WhatsApp Payment</span>
+                    </label>
+                  </div>
                 </div>
 
                 <div className="flex space-x-4 pt-4">
