@@ -56,19 +56,20 @@ export default function Layout({ children }: LayoutProps) {
                   <Link to="/policies" className="text-gray-700 hover:text-blue-600 transition-colors">
                     Policies
                   </Link>
-                  <button
-                    onClick={openCart}
-                    className="relative p-2 text-gray-700 hover:text-blue-600 transition-colors"
-                  >
-                    <ShoppingCart className="h-6 w-6" />
-                    {cartState.totalItems > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                        {cartState.totalItems}
-                      </span>
-                    )}
-                  </button>
                 </>
               )}
+              {/* Shopping Cart - Always visible */}
+              <button
+                onClick={openCart}
+                className="relative p-2 text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                <ShoppingCart className="h-6 w-6" />
+                {cartState.totalItems > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartState.totalItems}
+                  </span>
+                )}
+              </button>
               {isAdmin && (
                 <>
                   <Link to="/admin" className="text-gray-700 hover:text-blue-600 transition-colors">
@@ -85,13 +86,29 @@ export default function Layout({ children }: LayoutProps) {
               )}
             </nav>
 
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 rounded-md text-gray-700 hover:text-blue-600 hover:bg-gray-100"
-            >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
+            {/* Mobile cart icon and menu button */}
+            <div className="md:hidden flex items-center space-x-2">
+              {/* Shopping Cart - Mobile */}
+              <button
+                onClick={openCart}
+                className="relative p-2 text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                <ShoppingCart className="h-6 w-6" />
+                {cartState.totalItems > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartState.totalItems}
+                  </span>
+                )}
+              </button>
+              
+              {/* Mobile menu button */}
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="p-2 rounded-md text-gray-700 hover:text-blue-600 hover:bg-gray-100"
+              >
+                {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </button>
+            </div>
           </div>
 
           {/* Mobile Navigation */}
@@ -121,16 +138,6 @@ export default function Layout({ children }: LayoutProps) {
                     >
                       Policies
                     </Link>
-                    <button
-                      onClick={() => {
-                        openCart();
-                        setIsMenuOpen(false);
-                      }}
-                      className="flex items-center text-gray-700 hover:text-blue-600 transition-colors"
-                    >
-                      <ShoppingCart className="h-5 w-5 mr-2" />
-                      Cart ({cartState.totalItems})
-                    </button>
                   </>
                 )}
                 {isAdmin && (
