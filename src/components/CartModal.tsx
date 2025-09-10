@@ -18,6 +18,8 @@ export default function CartModal() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const deliveryCharge = state.totalPrice >= 299 ? 0 : 40; 
+  const finalTotal = state.totalPrice + deliveryCharge;
 
   if (!state.isOpen) return null;
 
