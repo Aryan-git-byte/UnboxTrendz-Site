@@ -214,9 +214,28 @@ export default function CartModal() {
 
               {/* Order Summary */}
               <div className="bg-blue-50 rounded-lg p-4 mb-6">
-                <div className="flex justify-between items-center text-lg font-bold text-gray-800">
-                  <span>Total: ₹{state.totalPrice}</span>
-                  <span>({state.totalItems} items)</span>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-gray-700">
+                    <span>Subtotal ({state.totalItems} items):</span>
+                    <span>₹{state.totalPrice}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-gray-700">
+                    <span>Delivery Charge:</span>
+                    <span className={deliveryCharge === 0 ? "text-green-600 font-semibold" : ""}>
+                      {deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}
+                    </span>
+                  </div>
+                  {state.totalPrice < 299 && (
+                    <div className="text-xs text-gray-600 italic">
+                      Add ₹{299 - state.totalPrice} more for free delivery!
+                    </div>
+                  )}
+                  <div className="border-t border-gray-300 pt-2">
+                    <div className="flex justify-between items-center text-lg font-bold text-gray-800">
+                      <span>Final Total:</span>
+                      <span>₹{finalTotal}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
