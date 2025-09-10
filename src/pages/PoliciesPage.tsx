@@ -27,7 +27,7 @@ export default function PoliciesPage() {
           <div className="prose prose-gray max-w-none">
             <h3 className="text-lg font-semibold text-gray-800 mb-3">1. Acceptance of Terms</h3>
             <p className="text-gray-600 mb-4">
-              By accessing and using TRENDOCART, you accept and agree to be bound by the terms and provision of this agreement.
+              By accessing and using UNBOXTRENDZ, you accept and agree to be bound by the terms and provision of this agreement.
             </p>
 
             <h3 className="text-lg font-semibold text-gray-800 mb-3">2. Product Information</h3>
