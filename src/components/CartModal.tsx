@@ -431,7 +431,7 @@ export default function CartModal() {
                     disabled={isSubmitting}
                     className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-green-600 hover:to-green-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isSubmitting ? 'Placing Order...' : 'Place Order via WhatsApp'}
+                    {isSubmitting ? 'Placing Order...' : 'Place Order'}
                   </button>
                   <button
                     type="button"
