@@ -33,156 +33,174 @@ export default function CartModal() {
     }
   };
 
-  const handlePlaceOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Updated handlePlaceOrder function with better error handling and debugging
+const handlePlaceOrder = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  if (!customerDetails.name.trim() || !customerDetails.phone.trim() || 
+      !customerDetails.houseNo.trim() || !customerDetails.city.trim() || 
+      !customerDetails.state.trim() || !customerDetails.pincode.trim()) {
+    alert('Please fill in all required fields (Name, Phone, House No., City, State, Pincode)');
+    return;
+  }
+
+  if (state.items.length === 0) {
+    alert('Your cart is empty');
+    return;
+  }
+
+  setIsSubmitting(true);
+
+  try {
+    // Prepare order data for Supabase
+    const orderData = {
+      customer_name: customerDetails.name.trim(),
+      customer_phone: customerDetails.phone.trim(),
+      customer_alternate_phone: customerDetails.alternatePhone?.trim() || null,
+      customer_email: customerDetails.email?.trim() || null,
+      delivery_house_no: customerDetails.houseNo.trim(),
+      delivery_landmark: customerDetails.landmark?.trim() || null,
+      delivery_city: customerDetails.city.trim(),
+      delivery_state: customerDetails.state.trim(),
+      delivery_pincode: customerDetails.pincode.trim(),
+      payment_mode: customerDetails.paymentMode,
+      total_amount: Number(finalTotal),
+      delivery_charge: Number(deliveryCharge),
+      order_items: state.items.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: Number(item.price),
+        quantity: Number(item.quantity),
+        category: item.category,
+        images: item.images || [],
+      })),
+    };
+
+    console.log('Attempting to insert order data:', orderData);
+
+    // Try to save order to Supabase
+    const { data: newOrder, error: supabaseError } = await supabase
+      .from('orders')
+      .insert([orderData])
+      .select()
+      .single();
+
+    if (supabaseError) {
+      console.error('Supabase error details:', supabaseError);
+      throw supabaseError;
+    }
+
+    console.log('Order saved successfully:', newOrder);
+
+    // Format order details for WhatsApp
+    let message = ` *New Order from UnboxTrendz*\n\n`;
+    message += ` *Order ID:* ${newOrder.id.substring(0, 8)}\n\n`;
+    message += ` *Customer Details:*\n`;
+    message += `Name: ${customerDetails.name}\n`;
+    message += `Phone: ${customerDetails.phone}\n`;
+    if (customerDetails.alternatePhone) {
+      message += `Alternate Phone: ${customerDetails.alternatePhone}\n`;
+    }
+    if (customerDetails.email) {
+      message += `Email: ${customerDetails.email}\n`;
+    }
     
-    if (!customerDetails.name.trim() || !customerDetails.phone.trim() || 
-        !customerDetails.houseNo.trim() || !customerDetails.city.trim() || 
-        !customerDetails.state.trim() || !customerDetails.pincode.trim()) {
-      alert('Please fill in all required fields (Name, Phone, House No., City, State, Pincode)');
-      return;
+    message += `\n *Delivery Address:*\n`;
+    message += `House No.: ${customerDetails.houseNo}\n`;
+    if (customerDetails.landmark) {
+      message += `Landmark: ${customerDetails.landmark}\n`;
+    }
+    message += `City: ${customerDetails.city}\n`;
+    message += `State: ${customerDetails.state}\n`;
+    message += `Pincode: ${customerDetails.pincode}\n\n`;
+    
+    message += ` *Payment Mode:*\n`;
+    message += `${customerDetails.paymentMode === 'cod' ? 'Cash on Delivery (COD)' : 'WhatsApp Payment'}\n\n`;
+    
+    message += ` *Order Items:*\n`;
+    state.items.forEach((item, index) => {
+      message += `${index + 1}. *${item.name}*\n`;
+      message += `   Category: ${item.category}\n`;
+      message += `   Price: ₹${item.price} x ${item.quantity} = ₹${item.price * item.quantity}\n\n`;
+    });
+    
+    message += ` *Order Summary:*\n`;
+    message += `Subtotal: ₹${state.totalPrice}\n`;
+    message += `Delivery Charge: ${deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}\n`;
+    message += `Final Total: ₹${finalTotal}\n\n`;
+    message += `Please confirm availability and delivery details. Thank you! `;
+
+    const whatsappUrl = `https://wa.me/919835808590?text=${encodeURIComponent(message)}`;
+
+    if (customerDetails.paymentMode === 'cod') {
+      // Show success message for COD
+      setSuccessMessage('Order placed successfully! We will contact you shortly to confirm details.');
+      setShowSuccess(true);
+      
+      // Clear cart and form after successful order
+      setTimeout(() => {
+        clearCart();
+        setCustomerDetails({ 
+          name: '', 
+          phone: '', 
+          alternatePhone: '',
+          email: '', 
+          houseNo: '',
+          landmark: '',
+          city: '',
+          state: '',
+          pincode: '',
+          paymentMode: 'cod'
+        });
+        setShowSuccess(false);
+        closeCart();
+      }, 3000);
+    } else if (customerDetails.paymentMode === 'whatsapp') {
+      // Redirect to WhatsApp for WhatsApp Payment
+      window.open(whatsappUrl, '_blank');
+      setSuccessMessage('Redirecting to WhatsApp for payment. Please complete the payment process.');
+      setShowSuccess(true);
+      
+      // Clear cart and form after redirect
+      setTimeout(() => {
+        clearCart();
+        setCustomerDetails({ 
+          name: '', 
+          phone: '', 
+          alternatePhone: '',
+          email: '', 
+          houseNo: '',
+          landmark: '',
+          city: '',
+          state: '',
+          pincode: '',
+          paymentMode: 'cod'
+        });
+        setShowSuccess(false);
+        closeCart();
+      }, 2000);
     }
 
-    if (state.items.length === 0) {
-      alert('Your cart is empty');
-      return;
+  } catch (error) {
+    console.error('Detailed error placing order:', error);
+    
+    // More detailed error message
+    let errorMessage = 'Failed to place order. ';
+    if (error && typeof error === 'object' && 'message' in error) {
+      errorMessage += `Error: ${error.message}`;
     }
-
-    setIsSubmitting(true);
-
-    try {
-      // Prepare order data for Supabase
-      const orderData = {
-        customer_name: customerDetails.name,
-        customer_phone: customerDetails.phone,
-        customer_alternate_phone: customerDetails.alternatePhone || null,
-        customer_email: customerDetails.email || null,
-        delivery_house_no: customerDetails.houseNo,
-        delivery_landmark: customerDetails.landmark || null,
-        delivery_city: customerDetails.city,
-        delivery_state: customerDetails.state,
-        delivery_pincode: customerDetails.pincode,
-        payment_mode: customerDetails.paymentMode as 'cod' | 'whatsapp',
-        total_amount: finalTotal,
-        delivery_charge: deliveryCharge,
-        order_items: state.items.map(item => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-          category: item.category,
-          images: item.images || [],
-        })),
-      };
-
-      // Save order to Supabase
-      const { data: newOrder, error: supabaseError } = await supabase
-        .from('orders')
-        .insert([orderData])
-        .select()
-        .single();
-
-      if (supabaseError) {
-        throw supabaseError;
-      }
-
-      // Format order details for WhatsApp
-      let message = ` *New Order from UnboxTrendz*\n\n`;
-      message += ` *Order ID:* ${newOrder.id.substring(0, 8)}\n\n`;
-      message += ` *Customer Details:*\n`;
-      message += `Name: ${customerDetails.name}\n`;
-      message += `Phone: ${customerDetails.phone}\n`;
-      if (customerDetails.alternatePhone) {
-        message += `Alternate Phone: ${customerDetails.alternatePhone}\n`;
-      }
-      if (customerDetails.email) {
-        message += `Email: ${customerDetails.email}\n`;
-      }
-      
-      message += `\n *Delivery Address:*\n`;
-      message += `House No.: ${customerDetails.houseNo}\n`;
-      if (customerDetails.landmark) {
-        message += `Landmark: ${customerDetails.landmark}\n`;
-      }
-      message += `City: ${customerDetails.city}\n`;
-      message += `State: ${customerDetails.state}\n`;
-      message += `Pincode: ${customerDetails.pincode}\n\n`;
-      
-      message += ` *Payment Mode:*\n`;
-      message += `${customerDetails.paymentMode === 'cod' ? 'Cash on Delivery (COD)' : 'WhatsApp Payment'}\n\n`;
-      
-      message += ` *Order Items:*\n`;
-      state.items.forEach((item, index) => {
-        message += `${index + 1}. *${item.name}*\n`;
-        message += `   Category: ${item.category}\n`;
-        message += `   Price: ₹${item.price} x ${item.quantity} = ₹${item.price * item.quantity}\n\n`;
-      });
-      
-      message += ` *Order Summary:*\n`;
-      message += `Subtotal: ₹${state.totalPrice}\n`;
-      message += `Delivery Charge: ${deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}\n`;
-      message += `Final Total: ₹${finalTotal}\n\n`;
-      message += `Please confirm availability and delivery details. Thank you! `;
-
-      const whatsappUrl = `https://wa.me/919835808590?text=${encodeURIComponent(message)}`;
-
-      
-      if (customerDetails.paymentMode === 'cod') {
-        // Show success message for COD
-        setSuccessMessage('Order placed successfully! We will contact you shortly to confirm details.');
-        setShowSuccess(true);
-        
-        // Clear cart and form after successful order
-        setTimeout(() => {
-          clearCart();
-          setCustomerDetails({ 
-            name: '', 
-            phone: '', 
-            alternatePhone: '',
-            email: '', 
-            houseNo: '',
-            landmark: '',
-            city: '',
-            state: '',
-            pincode: '',
-            paymentMode: 'cod'
-          });
-          setShowSuccess(false);
-          closeCart();
-        }, 3000);
-      } else if (customerDetails.paymentMode === 'whatsapp') {
-        // Redirect to WhatsApp for WhatsApp Payment
-        window.open(whatsappUrl, '_blank');
-        setSuccessMessage('Redirecting to WhatsApp for payment. Please complete the payment process.');
-        setShowSuccess(true);
-        
-        // Clear cart and form after redirect
-        setTimeout(() => {
-          clearCart();
-          setCustomerDetails({ 
-            name: '', 
-            phone: '', 
-            alternatePhone: '',
-            email: '', 
-            houseNo: '',
-            landmark: '',
-            city: '',
-            state: '',
-            pincode: '',
-            paymentMode: 'cod'
-          });
-          setShowSuccess(false);
-          closeCart();
-        }, 2000);
-      }
-
-    } catch (error) {
-      console.error('Error placing order:', error);
-      alert('Failed to place order. Please try again. ' + (error as Error).message);
-    } finally {
-      setIsSubmitting(false);
+    if (error && typeof error === 'object' && 'details' in error) {
+      errorMessage += ` Details: ${error.details}`;
     }
-  };
+    if (error && typeof error === 'object' && 'hint' in error) {
+      errorMessage += ` Hint: ${error.hint}`;
+    }
+    
+    alert(errorMessage);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   if (showSuccess) {
     return (
