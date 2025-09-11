@@ -21,6 +21,7 @@ export default function AdminDashboard() {
   });
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [convertingImages, setConvertingImages] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -58,10 +59,82 @@ export default function AdminDashboard() {
     }
   };
 
+  // Function to convert image to WebP format
+  const convertToWebP = (file: File, quality: number = 0.8): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+
+      img.onload = () => {
+        // Set canvas dimensions to match image
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        // Draw image on canvas
+        ctx?.drawImage(img, 0, 0);
+
+        // Convert to WebP blob
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              // Create new file with WebP extension
+              const originalName = file.name.split('.')[0];
+              const webpFile = new File([blob], `${originalName}.webp`, {
+                type: 'image/webp',
+                lastModified: Date.now(),
+              });
+              resolve(webpFile);
+            } else {
+              reject(new Error('Failed to convert image to WebP'));
+            }
+          },
+          'image/webp',
+          quality
+        );
+      };
+
+      img.onerror = () => {
+        reject(new Error('Failed to load image for conversion'));
+      };
+
+      // Load the original image
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  // Function to convert multiple images to WebP
+  const convertImagesToWebP = async (files: File[]): Promise<File[]> => {
+    const convertedFiles: File[] = [];
+    
+    for (const file of files) {
+      try {
+        // Only convert if it's not already WebP
+        if (file.type !== 'image/webp') {
+          const webpFile = await convertToWebP(file);
+          convertedFiles.push(webpFile);
+        } else {
+          convertedFiles.push(file);
+        }
+      } catch (error) {
+        console.error(`Failed to convert ${file.name}:`, error);
+        // If conversion fails, use original file
+        convertedFiles.push(file);
+      }
+    }
+    
+    return convertedFiles;
+  };
+
   const uploadImages = async (files: File[]): Promise<string[]> => {
     const uploadedUrls: string[] = [];
 
-    for (const file of files) {
+    // Convert images to WebP first
+    setConvertingImages(true);
+    const convertedFiles = await convertImagesToWebP(files);
+    setConvertingImages(false);
+
+    for (const file of convertedFiles) {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `products/${fileName}`;
@@ -310,7 +383,7 @@ export default function AdminDashboard() {
                       Click to select images
                     </label>
                     <p className="text-gray-500 text-sm mt-2">
-                      Select multiple images from your device gallery
+                      Images will be automatically converted to WebP format for optimal performance
                     </p>
                     {selectedImages.length > 0 && (
                       <p className="text-green-600 text-sm mt-2">
@@ -336,10 +409,15 @@ export default function AdminDashboard() {
                 <div className="flex space-x-4">
                   <button
                     type="submit"
-                    disabled={uploading}
+                    disabled={uploading || convertingImages}
                     className="flex-1 flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50"
                   >
-                    {uploading ? (
+                    {convertingImages ? (
+                      <>
+                        <Loader2 className="animate-spin h-5 w-5 mr-2" />
+                        Converting images...
+                      </>
+                    ) : uploading ? (
                       <>
                         <Loader2 className="animate-spin h-5 w-5 mr-2" />
                         {editingProduct ? 'Updating...' : 'Adding...'}
