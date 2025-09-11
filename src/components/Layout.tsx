@@ -33,10 +33,11 @@ export default function Layout({ children }: LayoutProps) {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2">
-              <div className="relative">
-                <ShoppingBag className="h-8 w-8 text-gray-800" />
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full"></div>
-              </div>
+              <img 
+                src="/logo.jpg" 
+                alt="UnboxTrendz Logo" 
+                className="h-10 w-10 rounded-lg object-cover"
+              />
               <div>
                 <h1 className="text-xl font-bold text-gray-800">UNBOXTRENDZ</h1>
                 <p className="text-xs text-gray-600 -mt-1">Unbox Your Trend</p>
@@ -179,7 +180,11 @@ export default function Layout({ children }: LayoutProps) {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
               <div className="flex items-center justify-center space-x-2 mb-4">
-                <ShoppingBag className="h-6 w-6" />
+                <img 
+                  src="/logo.jpg" 
+                  alt="UnboxTrendz Logo" 
+                  className="h-8 w-8 rounded-lg object-cover"
+                />
                 <div>
                   <h3 className="text-lg font-bold">UNBOXTRENDZ</h3>
                   <p className="text-sm text-gray-400">Unbox Your Trend</p>
