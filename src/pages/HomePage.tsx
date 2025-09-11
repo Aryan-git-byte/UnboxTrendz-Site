@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowRight, Star, ShoppingBag, Plus, Share2, Check } from 'lucide-react';
+import { ArrowRight, Star, ShoppingBag, Plus, Share2, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase, type Product } from '../lib/supabase';
 import { useCart } from '../contexts/CartContext';
 
@@ -19,6 +19,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [copiedProductId, setCopiedProductId] = useState<string | null>(null);
   const [showAddToCartSuccessId, setShowAddToCartSuccessId] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState<{ [key: string]: number }>({});
   const { addToCart } = useCart();
 
   // Structured data for SEO
@@ -101,6 +102,21 @@ export default function HomePage() {
       setCopiedProductId(product.id);
       setTimeout(() => setCopiedProductId(null), 1000);
     }
+  };
+
+  const handleImageNavigation = (productId: string, direction: 'prev' | 'next', totalImages: number) => {
+    setCurrentImageIndex(prev => {
+      const currentIndex = prev[productId] || 0;
+      let newIndex;
+      
+      if (direction === 'next') {
+        newIndex = currentIndex === totalImages - 1 ? 0 : currentIndex + 1;
+      } else {
+        newIndex = currentIndex === 0 ? totalImages - 1 : currentIndex - 1;
+      }
+      
+      return { ...prev, [productId]: newIndex };
+    });
   };
 
   return (
@@ -195,12 +211,47 @@ export default function HomePage() {
                 <div key={product.id} className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                   <div className="relative h-64 overflow-hidden">
                     {product.images && product.images.length > 0 ? (
-                      <img
-                        src={product.images[0]}
-                        alt={product.name}
-                        loading="lazy"
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                      />
+                      <>
+                        <img
+                          src={product.images[currentImageIndex[product.id] || 0]}
+                          alt={`${product.name} - Image ${(currentImageIndex[product.id] || 0) + 1}`}
+                          loading="lazy"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                        
+                        {/* Image Navigation - Only show if multiple images */}
+                        {product.images.length > 1 && (
+                          <>
+                            <button
+                              onClick={() => handleImageNavigation(product.id, 'prev', product.images.length)}
+                              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-opacity-70"
+                            >
+                              <ChevronLeft className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleImageNavigation(product.id, 'next', product.images.length)}
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-opacity-70"
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </button>
+                            
+                            {/* Image Indicators */}
+                            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              {product.images.map((_, index) => (
+                                <button
+                                  key={index}
+                                  onClick={() => setCurrentImageIndex(prev => ({ ...prev, [product.id]: index }))}
+                                  className={`w-2 h-2 rounded-full transition-colors ${
+                                    index === (currentImageIndex[product.id] || 0)
+                                      ? 'bg-white'
+                                      : 'bg-white bg-opacity-50'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </>
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
                         <ShoppingBag className="h-16 w-16 text-gray-400" />
@@ -209,6 +260,13 @@ export default function HomePage() {
                     <div className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-md">
                       <Star className="h-4 w-4 text-yellow-500 fill-current" />
                     </div>
+                    
+                    {/* Image Counter */}
+                    {product.images && product.images.length > 1 && (
+                      <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
+                        {(currentImageIndex[product.id] || 0) + 1}/{product.images.length}
+                      </div>
+                    )}
                   </div>
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-2">
