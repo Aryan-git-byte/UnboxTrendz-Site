@@ -26,3 +26,29 @@ export type AdminUser = {
   email: string;
   created_at: string;
 };
+
+export type Order = {
+  id: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_alternate_phone?: string;
+  customer_email?: string;
+  delivery_house_no: string;
+  delivery_landmark?: string;
+  delivery_city: string;
+  delivery_state: string;
+  delivery_pincode: string;
+  payment_mode: 'cod' | 'whatsapp';
+  total_amount: number;
+  delivery_charge: number;
+  order_items: Array<{
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+    category: string;
+    images?: string[];
+  }>;
+  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  created_at: string;
+};

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Plus, Minus, Trash2, ShoppingCart, User, Phone, Mail, MapPin, Home, Landmark, Building, CreditCard } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
+import { supabase } from '../lib/supabase';
 
 export default function CartModal() {
   const { state, removeFromCart, updateQuantity, clearCart, closeCart } = useCart();
@@ -18,6 +19,7 @@ export default function CartModal() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const deliveryCharge = state.totalPrice >= 299 ? 0 : 40; 
   const finalTotal = state.totalPrice + deliveryCharge;
 
@@ -49,8 +51,44 @@ export default function CartModal() {
     setIsSubmitting(true);
 
     try {
+      // Prepare order data for Supabase
+      const orderData = {
+        customer_name: customerDetails.name,
+        customer_phone: customerDetails.phone,
+        customer_alternate_phone: customerDetails.alternatePhone || null,
+        customer_email: customerDetails.email || null,
+        delivery_house_no: customerDetails.houseNo,
+        delivery_landmark: customerDetails.landmark || null,
+        delivery_city: customerDetails.city,
+        delivery_state: customerDetails.state,
+        delivery_pincode: customerDetails.pincode,
+        payment_mode: customerDetails.paymentMode as 'cod' | 'whatsapp',
+        total_amount: finalTotal,
+        delivery_charge: deliveryCharge,
+        order_items: state.items.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          category: item.category,
+          images: item.images || [],
+        })),
+      };
+
+      // Save order to Supabase
+      const { data: newOrder, error: supabaseError } = await supabase
+        .from('orders')
+        .insert([orderData])
+        .select()
+        .single();
+
+      if (supabaseError) {
+        throw supabaseError;
+      }
+
       // Format order details for WhatsApp
       let message = ` *New Order from UnboxTrendz*\n\n`;
+      message += ` *Order ID:* ${newOrder.id.substring(0, 8)}\n\n`;
       message += ` *Customer Details:*\n`;
       message += `Name: ${customerDetails.name}\n`;
       message += `Phone: ${customerDetails.phone}\n`;
@@ -81,38 +119,66 @@ export default function CartModal() {
       });
       
       message += ` *Order Summary:*\n`;
-      message += `Total Items: ${state.totalItems}\n`;
-      message += `Total Amount: ₹${state.totalPrice}\n\n`;
+      message += `Subtotal: ₹${state.totalPrice}\n`;
+      message += `Delivery Charge: ${deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}\n`;
+      message += `Final Total: ₹${finalTotal}\n\n`;
       message += `Please confirm availability and delivery details. Thank you! `;
 
       const whatsappUrl = `https://wa.me/919835808590?text=${encodeURIComponent(message)}`;
-      window.open(whatsappUrl, '_blank');
 
-      // Show success message
-      setShowSuccess(true);
       
-      // Clear cart and form after successful order
-      setTimeout(() => {
-        clearCart();
-        setCustomerDetails({ 
-          name: '', 
-          phone: '', 
-          alternatePhone: '',
-          email: '', 
-          houseNo: '',
-          landmark: '',
-          city: '',
-          state: '',
-          pincode: '',
-          paymentMode: 'cod'
-        });
-        setShowSuccess(false);
-        closeCart();
-      }, 2000);
+      if (customerDetails.paymentMode === 'cod') {
+        // Show success message for COD
+        setSuccessMessage('Order placed successfully! We will contact you shortly to confirm details.');
+        setShowSuccess(true);
+        
+        // Clear cart and form after successful order
+        setTimeout(() => {
+          clearCart();
+          setCustomerDetails({ 
+            name: '', 
+            phone: '', 
+            alternatePhone: '',
+            email: '', 
+            houseNo: '',
+            landmark: '',
+            city: '',
+            state: '',
+            pincode: '',
+            paymentMode: 'cod'
+          });
+          setShowSuccess(false);
+          closeCart();
+        }, 3000);
+      } else if (customerDetails.paymentMode === 'whatsapp') {
+        // Redirect to WhatsApp for WhatsApp Payment
+        window.open(whatsappUrl, '_blank');
+        setSuccessMessage('Redirecting to WhatsApp for payment. Please complete the payment process.');
+        setShowSuccess(true);
+        
+        // Clear cart and form after redirect
+        setTimeout(() => {
+          clearCart();
+          setCustomerDetails({ 
+            name: '', 
+            phone: '', 
+            alternatePhone: '',
+            email: '', 
+            houseNo: '',
+            landmark: '',
+            city: '',
+            state: '',
+            pincode: '',
+            paymentMode: 'cod'
+          });
+          setShowSuccess(false);
+          closeCart();
+        }, 2000);
+      }
 
     } catch (error) {
       console.error('Error placing order:', error);
-      alert('Failed to place order. Please try again.');
+      alert('Failed to place order. Please try again. ' + (error as Error).message);
     } finally {
       setIsSubmitting(false);
     }
@@ -125,9 +191,11 @@ export default function CartModal() {
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <ShoppingCart className="h-8 w-8 text-green-600" />
           </div>
-          <h3 className="text-xl font-bold text-gray-800 mb-2">Order Placed Successfully!</h3>
+          <h3 className="text-xl font-bold text-gray-800 mb-2">
+            {customerDetails.paymentMode === 'cod' ? 'Order Placed Successfully!' : 'Redirecting to WhatsApp...'}
+          </h3>
           <p className="text-gray-600 mb-4">
-            Your order has been sent via WhatsApp. We'll contact you shortly to confirm details.
+            {successMessage}
           </p>
           <div className="animate-spin w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full mx-auto"></div>
         </div>
