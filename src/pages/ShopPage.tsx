@@ -118,6 +118,7 @@ export default function ShopPage() {
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [allProducts, setAllProducts] = useState<Product[]>([]); // Store all products for search
   const [currentImageIndex, setCurrentImageIndex] = useState<Record<string, number>>({});
+  const [imageLoading, setImageLoading] = useState<Record<string, boolean>>({});
   const { addToCart } = useCart();
 
   useEffect(() => {
@@ -139,6 +140,26 @@ export default function ShopPage() {
       setSearchQuery(search);
     }
   }, [searchParams]);
+
+  // Preload all product images
+  useEffect(() => {
+    if (allProducts.length > 0) {
+      const preloadImages = () => {
+        allProducts.forEach(product => {
+          if (product.images && product.images.length > 0) {
+            product.images.forEach(imageUrl => {
+              const img = new Image();
+              img.src = imageUrl;
+            });
+          }
+        });
+      };
+
+      // Preload images after a short delay to prioritize initial page rendering
+      const timeoutId = setTimeout(preloadImages, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [allProducts]);
 
   // Scroll to and highlight specific product when products are loaded
   useEffect(() => {
@@ -269,6 +290,9 @@ export default function ShopPage() {
   };
 
   const handleImageNavigation = (productId: string, direction: 'prev' | 'next', totalImages: number) => {
+    // Set loading state to trigger fade out
+    setImageLoading(prev => ({ ...prev, [productId]: true }));
+
     setCurrentImageIndex(prev => {
       const currentIndex = prev[productId] || 0;
       let newIndex;
@@ -281,6 +305,10 @@ export default function ShopPage() {
       
       return { ...prev, [productId]: newIndex };
     });
+  };
+
+  const handleImageLoad = (productId: string) => {
+    setImageLoading(prev => ({ ...prev, [productId]: false }));
   };
 
   const handleWhatsAppOrder = (product: Product) => {
@@ -464,11 +492,21 @@ export default function ShopPage() {
                   <div className={`relative overflow-hidden ${viewMode === 'grid' ? 'h-64' : 'w-32 h-32 flex-shrink-0'}`}>
                     {product.images && product.images.length > 0 ? (
                       <>
+                        {/* Loading overlay */}
+                        {imageLoading[product.id] && (
+                          <div className="absolute inset-0 bg-gray-200 flex items-center justify-center z-10">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                          </div>
+                        )}
+                        
                         <img
                           src={product.images[currentImageIndex[product.id] || 0]}
                           alt={product.name}
                           loading="lazy"
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          onLoad={() => handleImageLoad(product.id)}
+                          className={`w-full h-full object-cover group-hover:scale-110 transition-all duration-300 ${
+                            imageLoading[product.id] ? 'opacity-0' : 'opacity-100'
+                          }`}
                         />
                         
                         {/* Navigation arrows - only show if more than 1 image */}
@@ -476,7 +514,7 @@ export default function ShopPage() {
                           <>
                             <button
                               onClick={() => handleImageNavigation(product.id, 'prev', product.images.length)}
-                              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-1 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100"
+                              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-1 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 z-20"
                               aria-label="Previous image"
                             >
                               <ChevronLeft className="h-4 w-4" />
@@ -484,7 +522,7 @@ export default function ShopPage() {
                             
                             <button
                               onClick={() => handleImageNavigation(product.id, 'next', product.images.length)}
-                              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-1 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100"
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-1 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 z-20"
                               aria-label="Next image"
                             >
                               <ChevronRight className="h-4 w-4" />
@@ -493,19 +531,24 @@ export default function ShopPage() {
                         )}
                         
                         {/* Image counter */}
-                        {product.images.length > 1 && (
-                          <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
+                        {product.images.length > 1 && !imageLoading[product.id] && (
+                          <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full z-20">
                             {(currentImageIndex[product.id] || 0) + 1}/{product.images.length}
                           </div>
                         )}
                         
                         {/* Indicator dots */}
-                        {product.images.length > 1 && (
-                          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+                        {product.images.length > 1 && !imageLoading[product.id] && (
+                          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1 z-20">
                             {product.images.map((_, index) => (
                               <button
                                 key={index}
-                                onClick={() => setCurrentImageIndex(prev => ({ ...prev, [product.id]: index }))}
+                                onClick={() => {
+                                  if (index !== (currentImageIndex[product.id] || 0)) {
+                                    setImageLoading(prev => ({ ...prev, [product.id]: true }));
+                                    setCurrentImageIndex(prev => ({ ...prev, [product.id]: index }));
+                                  }
+                                }}
                                 className={`w-2 h-2 rounded-full transition-all duration-200 ${
                                   (currentImageIndex[product.id] || 0) === index 
                                     ? 'bg-white' 
@@ -522,7 +565,7 @@ export default function ShopPage() {
                         <ShoppingBag className="h-8 w-8 text-gray-400" />
                       </div>
                     )}
-                    <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md">
+                    <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md z-20">
                       <Star className="h-3 w-3 text-yellow-500 fill-current" />
                     </div>
                   </div>
