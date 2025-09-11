@@ -85,7 +85,7 @@ export default function CartModal() {
       message += `Total Amount: ₹${state.totalPrice}\n\n`;
       message += `Please confirm availability and delivery details. Thank you! `;
 
-      const whatsappUrl = `https://wa.me/919386387397?text=${encodeURIComponent(message)}`;
+      const whatsappUrl = `https://wa.me/919835808590?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
 
       // Show success message
