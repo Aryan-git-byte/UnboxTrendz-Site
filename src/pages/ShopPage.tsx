@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Filter, Grid, List, ShoppingBag, Star, Plus, Share2, Check, Search, X } from 'lucide-react';
+import { Filter, Grid, List, ShoppingBag, Star, Plus, Share2, Check, Search, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase, type Product } from '../lib/supabase';
 import { useCart } from '../contexts/CartContext';
 
@@ -117,6 +117,7 @@ export default function ShopPage() {
   const [highlightedProductId, setHighlightedProductId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [allProducts, setAllProducts] = useState<Product[]>([]); // Store all products for search
+  const [currentImageIndex, setCurrentImageIndex] = useState<Record<string, number>>({});
   const { addToCart } = useCart();
 
   useEffect(() => {
@@ -265,6 +266,21 @@ export default function ShopPage() {
     setSearchQuery('');
     updateSearchParams({ search: undefined });
     setSortBy('newest');
+  };
+
+  const handleImageNavigation = (productId: string, direction: 'prev' | 'next', totalImages: number) => {
+    setCurrentImageIndex(prev => {
+      const currentIndex = prev[productId] || 0;
+      let newIndex;
+      
+      if (direction === 'next') {
+        newIndex = currentIndex === totalImages - 1 ? 0 : currentIndex + 1;
+      } else {
+        newIndex = currentIndex === 0 ? totalImages - 1 : currentIndex - 1;
+      }
+      
+      return { ...prev, [productId]: newIndex };
+    });
   };
 
   const handleWhatsAppOrder = (product: Product) => {
@@ -447,11 +463,60 @@ export default function ShopPage() {
                 >
                   <div className={`relative overflow-hidden ${viewMode === 'grid' ? 'h-64' : 'w-32 h-32 flex-shrink-0'}`}>
                     {product.images && product.images.length > 0 ? (
-                      <img
-                        src={product.images[0]}
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                      />
+                      <>
+                        <img
+                          src={product.images[currentImageIndex[product.id] || 0]}
+                          alt={product.name}
+                          loading="lazy"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                        
+                        {/* Navigation arrows - only show if more than 1 image */}
+                        {product.images.length > 1 && (
+                          <>
+                            <button
+                              onClick={() => handleImageNavigation(product.id, 'prev', product.images.length)}
+                              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-1 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100"
+                              aria-label="Previous image"
+                            >
+                              <ChevronLeft className="h-4 w-4" />
+                            </button>
+                            
+                            <button
+                              onClick={() => handleImageNavigation(product.id, 'next', product.images.length)}
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-1 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100"
+                              aria-label="Next image"
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
+                        
+                        {/* Image counter */}
+                        {product.images.length > 1 && (
+                          <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
+                            {(currentImageIndex[product.id] || 0) + 1}/{product.images.length}
+                          </div>
+                        )}
+                        
+                        {/* Indicator dots */}
+                        {product.images.length > 1 && (
+                          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+                            {product.images.map((_, index) => (
+                              <button
+                                key={index}
+                                onClick={() => setCurrentImageIndex(prev => ({ ...prev, [product.id]: index }))}
+                                className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                                  (currentImageIndex[product.id] || 0) === index 
+                                    ? 'bg-white' 
+                                    : 'bg-white bg-opacity-50 hover:bg-opacity-75'
+                                }`}
+                                aria-label={`View image ${index + 1}`}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
                         <ShoppingBag className="h-8 w-8 text-gray-400" />
