@@ -698,3 +698,5 @@ export default function AdminDashboard() {
                           <button
                             onClick={() => handleDeleteOrder(order.id)}
                             className="text-red-600 hover:text-red-900 p-1
+                        </button>
+                        
