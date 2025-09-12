@@ -6,6 +6,7 @@ import { CartProvider } from './contexts/CartContext';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
+import ProductDetailPage from './pages/ProductDetailPage';
 import PoliciesPage from './pages/PoliciesPage';
 import LoginPage from './pages/admin/LoginPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -21,6 +22,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/shop" element={<ShopPage />} />
+                <Route path="/shop/:productId" element={<ProductDetailPage />} />
                 <Route path="/policies" element={<PoliciesPage />} />
                 <Route path="/admin/login" element={<LoginPage />} />
                 <Route path="/admin" element={<AdminDashboard />} />
