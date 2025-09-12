@@ -41,13 +41,6 @@ export default function ProductDetailPage() {
     }
   };
 
-  const handleWhatsAppOrder = () => {
-    if (!product) return;
-    const message = `Hi! I'm interested in ordering:\n\n*${product.name}*\nCategory: ${product.category}\nPrice: ₹${product.price}\n\nPlease let me know about availability and delivery details.`;
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
-  };
-
   const handleAddToCart = () => {
     if (!product) return;
     addToCart(product);
@@ -289,13 +282,6 @@ export default function ProductDetailPage() {
                 </div>
               )}
             </div>
-            
-            <button
-              onClick={handleWhatsAppOrder}
-              className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center"
-            >
-              Order via WhatsApp
-            </button>
           </div>
 
           {/* Additional Info */}
