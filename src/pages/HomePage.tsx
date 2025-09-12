@@ -1,74 +1,270 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
-import { ArrowRight, Star, ShoppingBag, Plus, Share2, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { Filter, Grid, List, ShoppingBag, Star, Plus, Share2, Check, Search, X, Eye } from 'lucide-react';
 import { supabase, type Product } from '../lib/supabase';
 import { useCart } from '../contexts/CartContext';
 
-const categories = [
-  { name: 'Toys', color: 'bg-red-500', icon: '🧸' },
-  { name: 'Gifts', color: 'bg-pink-500', icon: '🎁' },
-  { name: 'Kitchen & Home decor', color: 'bg-orange-500', icon: '🏠' },
-  { name: 'Jewellery', color: 'bg-purple-500', icon: '💎' },
-  { name: 'Gadgets', color: 'bg-blue-500', icon: '📱' },
-  { name: 'Stationery', color: 'bg-green-500', icon: '✏️' },
+const categories = ['Toys', 'Gifts', 'Kitchen & Home decor', 'Jewellery', 'Gadgets', 'Stationery'];
+const sortOptions = [
+  { value: 'newest', label: 'Newest First' },
+  { value: 'price-low', label: 'Price: Low to High' },
+  { value: 'price-high', label: 'Price: High to Low' },
+  { value: 'name', label: 'Name A-Z' },
+  { value: 'relevance', label: 'Most Relevant' },
 ];
 
-export default function HomePage() {
-  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+// Fuzzy search utility functions
+const levenshteinDistance = (str1: string, str2: string): number => {
+  const matrix = [];
+  const n = str2.length;
+  const m = str1.length;
+
+  if (n === 0) return m;
+  if (m === 0) return n;
+
+  for (let i = 0; i <= n; i++) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= m; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
+      }
+    }
+  }
+
+  return matrix[n][m];
+};
+
+const calculateSimilarity = (str1: string, str2: string): number => {
+  const maxLength = Math.max(str1.length, str2.length);
+  if (maxLength === 0) return 1;
+  return (maxLength - levenshteinDistance(str1.toLowerCase(), str2.toLowerCase())) / maxLength;
+};
+
+const getSearchRelevance = (product: Product, query: string): number => {
+  const lowerQuery = query.toLowerCase();
+  const lowerName = product.name.toLowerCase();
+  const lowerDescription = product.description?.toLowerCase() || '';
+  const lowerCategory = product.category.toLowerCase();
+
+  // Exact matches get highest score
+  if (lowerName.includes(lowerQuery)) return 100;
+  if (lowerDescription.includes(lowerQuery)) return 80;
+  if (lowerCategory.includes(lowerQuery)) return 70;
+
+  // Fuzzy matching for typos
+  const nameWords = lowerName.split(' ');
+  const descWords = lowerDescription.split(' ');
+  const queryWords = lowerQuery.split(' ');
+
+  let maxScore = 0;
+
+  // Check each query word against product words
+  queryWords.forEach(qWord => {
+    if (qWord.length < 2) return;
+
+    // Check name words
+    nameWords.forEach(nWord => {
+      const similarity = calculateSimilarity(qWord, nWord);
+      if (similarity > 0.7) {
+        maxScore = Math.max(maxScore, similarity * 90);
+      }
+    });
+
+    // Check description words
+    descWords.forEach(dWord => {
+      if (dWord.length > 2) {
+        const similarity = calculateSimilarity(qWord, dWord);
+        if (similarity > 0.7) {
+          maxScore = Math.max(maxScore, similarity * 60);
+        }
+      }
+    });
+
+    // Check category similarity
+    const catSimilarity = calculateSimilarity(qWord, lowerCategory);
+    if (catSimilarity > 0.7) {
+      maxScore = Math.max(maxScore, catSimilarity * 50);
+    }
+  });
+
+  return maxScore;
+};
+
+export default function ShopPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
+  const [sortBy, setSortBy] = useState('newest');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showFilters, setShowFilters] = useState(false);
   const [copiedProductId, setCopiedProductId] = useState<string | null>(null);
   const [showAddToCartSuccessId, setShowAddToCartSuccessId] = useState<string | null>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState<{ [key: string]: number }>({});
+  const [targetProductId, setTargetProductId] = useState<string | null>(null);
+  const [highlightedProductId, setHighlightedProductId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+  const [allProducts, setAllProducts] = useState<Product[]>([]); // Store all products for search
   const { addToCart } = useCart();
 
-  // Structured data for SEO
-  const organizationSchema = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": "UnboxTrendz",
-    "description": "Discover amazing products across toys, gifts, home decor, jewellery, gadgets, and stationery",
-    "url": "https://unboxtrendz.in",
-    "logo": "https://unboxtrendz.in/logo.png",
-    "sameAs": [
-      "https://www.facebook.com/unboxtrendz",
-      "https://www.instagram.com/unboxtrendz"
-    ]
-  };
-
-  const localBusinessSchema = {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "name": "UnboxTrendz",
-    "description": "Online store for toys, gifts, home decor, jewellery, gadgets, and stationery",
-    "address": {
-      "@type": "PostalAddress",
-      "addressCountry": "IN"
-    },
-    "areaServed": "India",
-    "priceRange": "₹₹"
-  };
-
   useEffect(() => {
-    fetchFeaturedProducts();
+    fetchAllProducts();
   }, []);
 
-  const fetchFeaturedProducts = async () => {
+  useEffect(() => {
+    const category = searchParams.get('category');
+    const productId = searchParams.get('product_id');
+    const search = searchParams.get('search');
+    
+    if (category) {
+      setSelectedCategory(category);
+    }
+    if (productId) {
+      setTargetProductId(productId);
+    }
+    if (search) {
+      setSearchQuery(search);
+    }
+  }, [searchParams]);
+
+  // Scroll to and highlight specific product when products are loaded
+  useEffect(() => {
+    if (products.length > 0 && targetProductId && !loading) {
+      const targetProduct = products.find(product => product.id === targetProductId);
+      
+      if (targetProduct) {
+        setTimeout(() => {
+          const element = document.getElementById(`product-${targetProductId}`);
+          if (element) {
+            element.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center' 
+            });
+            
+            setHighlightedProductId(targetProductId);
+            
+            setTimeout(() => {
+              setHighlightedProductId(null);
+            }, 3000);
+          }
+        }, 100);
+      }
+      
+      setTargetProductId(null);
+    }
+  }, [products, targetProductId, loading]);
+
+  const fetchAllProducts = async () => {
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('visible', true)
-        .order('created_at', { ascending: false })
-        .limit(6);
+        .eq('visible', true);
 
       if (error) throw error;
-      setFeaturedProducts(data || []);
+      setAllProducts(data || []);
     } catch (error) {
-      console.error('Error fetching featured products:', error);
+      console.error('Error fetching products:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Filter and sort products based on search, category, and sort options
+  const filteredAndSortedProducts = useMemo(() => {
+    let filtered = [...allProducts];
+
+    // Apply category filter
+    if (selectedCategory) {
+      filtered = filtered.filter(product => product.category === selectedCategory);
+    }
+
+    // Apply search filter with fuzzy matching
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim();
+      const searchResults = filtered
+        .map(product => ({
+          product,
+          relevance: getSearchRelevance(product, query)
+        }))
+        .filter(result => result.relevance > 30) // Threshold for relevance
+        .sort((a, b) => b.relevance - a.relevance)
+        .map(result => result.product);
+      
+      filtered = searchResults;
+    }
+
+    // Apply sorting
+    if (searchQuery.trim() && sortBy === 'relevance') {
+      // Already sorted by relevance above
+      return filtered;
+    }
+
+    switch (sortBy) {
+      case 'price-low':
+        return filtered.sort((a, b) => a.price - b.price);
+      case 'price-high':
+        return filtered.sort((a, b) => b.price - a.price);
+      case 'name':
+        return filtered.sort((a, b) => a.name.localeCompare(b.name));
+      case 'newest':
+      default:
+        return filtered.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+    }
+  }, [allProducts, selectedCategory, searchQuery, sortBy]);
+
+  useEffect(() => {
+    setProducts(filteredAndSortedProducts);
+  }, [filteredAndSortedProducts]);
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    updateSearchParams({ category: category || undefined });
+  };
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    updateSearchParams({ search: query || undefined });
+    
+    // Auto-set sort to relevance when searching
+    if (query.trim() && sortBy !== 'relevance') {
+      setSortBy('relevance');
+    }
+  };
+
+  const updateSearchParams = (updates: Record<string, string | undefined>) => {
+    const newParams = new URLSearchParams(searchParams);
+    
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) {
+        newParams.set(key, value);
+      } else {
+        newParams.delete(key);
+      }
+    });
+
+    setSearchParams(newParams);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    updateSearchParams({ search: undefined });
+    setSortBy('newest');
   };
 
   const handleWhatsAppOrder = (product: Product) => {
@@ -84,7 +280,7 @@ export default function HomePage() {
   };
 
   const handleShareProduct = async (product: Product) => {
-    const productUrl = `${window.location.origin}/shop?product_id=${product.id}`;
+    const productUrl = `${window.location.origin}/shop/${product.id}`;
     
     try {
       await navigator.clipboard.writeText(productUrl);
@@ -92,7 +288,6 @@ export default function HomePage() {
       setTimeout(() => setCopiedProductId(null), 1000);
     } catch (error) {
       console.error('Failed to copy link:', error);
-      // Fallback for browsers that don't support clipboard API
       const textArea = document.createElement('textarea');
       textArea.value = productUrl;
       document.body.appendChild(textArea);
@@ -104,99 +299,132 @@ export default function HomePage() {
     }
   };
 
-  const handleImageNavigation = (productId: string, direction: 'prev' | 'next', totalImages: number) => {
-    setCurrentImageIndex(prev => {
-      const currentIndex = prev[productId] || 0;
-      let newIndex;
-      
-      if (direction === 'next') {
-        newIndex = currentIndex === totalImages - 1 ? 0 : currentIndex + 1;
-      } else {
-        newIndex = currentIndex === 0 ? totalImages - 1 : currentIndex - 1;
-      }
-      
-      return { ...prev, [productId]: newIndex };
-    });
-  };
-
   return (
-    <div>
-      <Helmet>
-        <title>UnboxTrendz - Buy Toys, Gifts, Home Decor, Jewellery & Gadgets Online</title>
-        <meta name="description" content="Shop amazing toys, gifts, home decor, jewellery, gadgets, and stationery at UnboxTrendz. Discover trendy products with fast shipping across India. Unbox your trend today!" />
-        <meta name="keywords" content="toys online India, gifts online shopping, home decor items online, online jewellery store, gadgets online India, stationery online shopping" />
-        <link rel="canonical" href="https://unboxtrendz.in/" />
-        <script type="application/ld+json">
-          {JSON.stringify(organizationSchema)}
-        </script>
-        <script type="application/ld+json">
-          {JSON.stringify(localBusinessSchema)}
-        </script>
-      </Helmet>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">Shop</h1>
+        <p className="text-gray-600">Discover our amazing collection of trending products</p>
+      </div>
 
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold text-gray-800 mb-4">
-              Discover Amazing <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">Toys, Gifts & Trendy Products</span> Online
-            </h1>
-            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-              Shop premium toys, unique gifts, stylish home decor, beautiful jewellery, latest gadgets, and quality stationery at UnboxTrendz. Fast shipping across India. Unbox your trend today!
-            </p>
-            <Link
-              to="/shop"
-              className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
-            >
-              <ShoppingBag className="mr-2 h-5 w-5" />
-              Shop Now
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Categories Section */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-800 mb-4">Shop by Category</h2>
-            <p className="text-gray-600">Explore our diverse range of trending products across India's favorite categories</p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-            {categories.map((category) => (
-              <Link
-                key={category.name}
-                to={`/shop?category=${encodeURIComponent(category.name)}`}
-                className="group"
+      {/* Smart Search Bar */}
+      <div className="mb-8">
+        <div className="relative max-w-2xl mx-auto">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search products... "
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full pl-12 pr-12 py-4 text-lg border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+            />
+            {searchQuery && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors"
               >
-                <div className="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-gray-100">
-                  <div className={`w-16 h-16 ${category.color} rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300`}>
-                    <span className="text-2xl">{category.icon}</span>
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-800 text-center group-hover:text-blue-600 transition-colors">
-                    {category.name}
-                  </h3>
-                </div>
-              </Link>
-            ))}
+                <X className="h-5 w-5 text-gray-400" />
+              </button>
+            )}
+          </div>
+          
+          {searchQuery && (
+            <div className="mt-2 text-sm text-gray-600 text-center">
+              {products.length > 0 ? (
+                <span>Found {products.length} result{products.length !== 1 ? 's' : ''} for "{searchQuery}"</span>
+              ) : (
+                <span className="text-orange-600">No close matches found for "{searchQuery}". Try different keywords.</span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Sidebar Filters */}
+        <div className="lg:w-64 flex-shrink-0">
+          {/* Mobile Filter Toggle */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="lg:hidden w-full flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-lg mb-4"
+          >
+            <Filter className="h-5 w-5 mr-2" />
+            Filters
+          </button>
+
+          {/* Filter Panel */}
+          <div className={`bg-white rounded-lg shadow-md p-6 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Categories</h3>
+            <div className="space-y-2">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="category"
+                  value=""
+                  checked={selectedCategory === ''}
+                  onChange={() => handleCategoryChange('')}
+                  className="mr-3 text-blue-600"
+                />
+                <span className="text-gray-700">All Categories</span>
+              </label>
+              {categories.map((category) => (
+                <label key={category} className="flex items-center">
+                  <input
+                    type="radio"
+                    name="category"
+                    value={category}
+                    checked={selectedCategory === category}
+                    onChange={() => handleCategoryChange(category)}
+                    className="mr-3 text-blue-600"
+                  />
+                  <span className="text-gray-700">{category}</span>
+                </label>
+              ))}
+            </div>
           </div>
         </div>
-      </section>
 
-      {/* Featured Products Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-800 mb-4">Featured Products</h2>
-            <p className="text-gray-600">Check out our latest and most popular items</p>
+        {/* Main Content */}
+        <div className="flex-1">
+          {/* Controls */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div className="flex items-center space-x-4">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {sortOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}
+              >
+                <Grid className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}
+              >
+                <List className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
+          {/* Products Grid/List */}
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-white rounded-2xl shadow-md overflow-hidden animate-pulse">
-                  <div className="h-64 bg-gray-200"></div>
+                <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
+                  <div className={`bg-gray-200 ${viewMode === 'grid' ? 'h-64' : 'h-32'}`}></div>
                   <div className="p-6">
                     <div className="h-4 bg-gray-200 rounded mb-2"></div>
                     <div className="h-4 bg-gray-200 rounded w-2/3 mb-4"></div>
@@ -205,70 +433,48 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
-          ) : featuredProducts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredProducts.map((product) => (
-                <div key={product.id} className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
-                  <div className="relative h-64 overflow-hidden">
+          ) : products.length > 0 ? (
+            <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+              {products.map((product) => (
+                <div 
+                  key={product.id} 
+                  id={`product-${product.id}`}
+                  className={`bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group ${viewMode === 'list' ? 'flex' : ''} ${
+                    highlightedProductId === product.id 
+                      ? 'ring-4 ring-blue-500 ring-opacity-50 shadow-2xl transform scale-105' 
+                      : ''
+                  }`}
+                >
+                  <div className={`relative overflow-hidden ${viewMode === 'grid' ? '' : 'w-32 flex-shrink-0'}`}>
                     {product.images && product.images.length > 0 ? (
-                      <>
-                        <img
-                          src={product.images[currentImageIndex[product.id] || 0]}
-                          alt={`${product.name} - Image ${(currentImageIndex[product.id] || 0) + 1}`}
-                          loading="lazy"
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                        />
-                        
-                        {/* Image Navigation - Only show if multiple images */}
-                        {product.images.length > 1 && (
-                          <>
-                            <button
-                              onClick={() => handleImageNavigation(product.id, 'prev', product.images.length)}
-                              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-opacity-70"
-                            >
-                              <ChevronLeft className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleImageNavigation(product.id, 'next', product.images.length)}
-                              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-opacity-70"
-                            >
-                              <ChevronRight className="h-4 w-4" />
-                            </button>
-                            
-                            {/* Image Indicators */}
-                            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                              {product.images.map((_, index) => (
-                                <button
-                                  key={index}
-                                  onClick={() => setCurrentImageIndex(prev => ({ ...prev, [product.id]: index }))}
-                                  className={`w-2 h-2 rounded-full transition-colors ${
-                                    index === (currentImageIndex[product.id] || 0)
-                                      ? 'bg-white'
-                                      : 'bg-white bg-opacity-50'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </>
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        loading="lazy"
+                        className={`w-full h-auto object-cover group-hover:scale-110 transition-transform duration-300 ${viewMode === 'list' ? 'h-32' : ''}`}
+                      />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-                        <ShoppingBag className="h-16 w-16 text-gray-400" />
+                      <div className={`w-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center ${viewMode === 'list' ? 'h-32' : 'h-64'}`}>
+                        <ShoppingBag className="h-8 w-8 text-gray-400" />
                       </div>
                     )}
-                    <div className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-md">
-                      <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                    <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md">
+                      <Star className="h-3 w-3 text-yellow-500 fill-current" />
                     </div>
                     
-                    {/* Image Counter */}
+                    {/* Multiple images indicator */}
                     {product.images && product.images.length > 1 && (
-                      <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
-                        {(currentImageIndex[product.id] || 0) + 1}/{product.images.length}
+                      <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
+                        +{product.images.length - 1} more
                       </div>
                     )}
                   </div>
-                  <div className="p-6">
+                  <div className="p-6 flex-1">
+                    {highlightedProductId === product.id && (
+                      <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-2 text-center">
+                        <p className="text-blue-700 text-sm font-medium">📍 Shared Product</p>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-blue-600 font-medium">{product.category}</span>
                       <span className="text-lg font-bold text-gray-800">₹{product.price}</span>
@@ -276,18 +482,27 @@ export default function HomePage() {
                     <h3 className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2">{product.name}</h3>
                     <p className="text-gray-600 text-sm mb-4 line-clamp-2">{product.description}</p>
                     
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <div className="flex space-x-2 relative">
                         <button
                           onClick={() => handleAddToCart(product)}
-                          className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:from-blue-600 hover:to-blue-700 transition-all duration-300 flex items-center justify-center"
+                          className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 px-3 rounded-lg font-semibold hover:from-blue-600 hover:to-blue-700 transition-all duration-300 flex items-center justify-center text-sm"
                         >
-                          <Plus className="h-4 w-4 mr-2" />
+                          <Plus className="h-4 w-4 mr-1" />
                           Add to Cart
                         </button>
+                        
+                        <Link
+                          to={`/shop/${product.id}`}
+                          className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center"
+                          title="View product details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                        
                         <button
                           onClick={() => handleShareProduct(product)}
-                          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center"
+                          className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center"
                           title="Share product"
                         >
                           {copiedProductId === product.id ? (
@@ -318,23 +533,32 @@ export default function HomePage() {
           ) : (
             <div className="text-center py-12">
               <ShoppingBag className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">No featured products available at the moment.</p>
-            </div>
-          )}
-
-          {featuredProducts.length > 0 && (
-            <div className="text-center mt-12">
-              <Link
-                to="/shop"
-                className="inline-flex items-center px-6 py-3 bg-white text-blue-600 font-semibold rounded-xl border-2 border-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-300"
-              >
-                View All Products
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">No products found</h3>
+              <p className="text-gray-600">
+                {searchQuery 
+                  ? `No products match your search "${searchQuery}". Try different keywords or check for typos.`
+                  : selectedCategory 
+                    ? `No products available in the ${selectedCategory} category.`
+                    : 'No products available at the moment.'
+                }
+              </p>
+              {(searchQuery || selectedCategory) && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedCategory('');
+                    updateSearchParams({ search: undefined, category: undefined });
+                    setSortBy('newest');
+                  }}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Show All Products
+                </button>
+              )}
             </div>
           )}
         </div>
-      </section>
+      </div>
     </div>
   );
 }
