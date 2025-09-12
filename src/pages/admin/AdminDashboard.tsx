@@ -687,23 +687,149 @@ export default function AdminDashboard() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-  <div className="flex space-x-2">
-    <button
-      onClick={() => setSelectedOrder(order)}
-      className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
-      title="View order details"
-      type="button"
-    >
-      <Eye className="h-4 w-4" />
-    </button>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => setSelectedOrder(order)}
+                            className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                            title="View order details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteOrder(order.id)}
+                            className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                            title="Delete order"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-8 text-center">
+              <ShoppingBag className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">No orders yet</h3>
+              <p className="text-gray-600">Orders will appear here when customers make purchases.</p>
+            </div>
+          )}
+        </div>
+      )}
 
-    <button
-      onClick={() => handleDeleteOrder(order.id)}
-      className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-      title="Delete order"
-      type="button"
-    >
-      <Trash2 className="h-4 w-4" />
-    </button>
-  </div>
-</td>
+      {/* Order Details Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">
+                  Order Details
+                </h2>
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Customer Information */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Customer Information</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <User className="h-4 w-4 text-gray-400 mr-2" />
+                      <span className="font-medium">{selectedOrder.customer_name}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Phone className="h-4 w-4 text-gray-400 mr-2" />
+                      <span>{selectedOrder.customer_phone}</span>
+                    </div>
+                    <div className="flex items-start">
+                      <MapPin className="h-4 w-4 text-gray-400 mr-2 mt-1" />
+                      <span className="text-sm">{selectedOrder.customer_address}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Information */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Order Information</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Order ID:</span>
+                      <span className="font-mono text-sm">{selectedOrder.id.substring(0, 8)}...</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Status:</span>
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                        selectedOrder.status === 'pending' ? 'bg-blue-100 text-blue-800' :
+                        selectedOrder.status === 'confirmed' ? 'bg-purple-100 text-purple-800' :
+                        selectedOrder.status === 'shipped' ? 'bg-orange-100 text-orange-800' :
+                        selectedOrder.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Payment Method:</span>
+                      <span className="flex items-center">
+                        <CreditCard className="h-4 w-4 mr-1" />
+                        {selectedOrder.payment_mode === 'cod' ? 'Cash on Delivery' : 'WhatsApp Payment'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Order Date:</span>
+                      <span>{new Date(selectedOrder.created_at).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Order Items */}
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Order Items</h3>
+                <div className="space-y-3">
+                  {selectedOrder.items?.map((item, index) => (
+                    <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <span className="font-medium">{item.name}</span>
+                        <div className="text-sm text-gray-600">
+                          Quantity: {item.quantity} × ₹{item.price}
+                        </div>
+                      </div>
+                      <span className="font-semibold">₹{item.quantity * item.price}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Order Summary */}
+              <div className="mt-6 pt-4 border-t">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-gray-600">Subtotal:</span>
+                  <span>₹{selectedOrder.total_amount - selectedOrder.delivery_charge}</span>
+                </div>
+                {selectedOrder.delivery_charge > 0 && (
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-gray-600">Delivery Charge:</span>
+                    <span>₹{selectedOrder.delivery_charge}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-lg font-semibold border-t pt-2">
+                  <span>Total:</span>
+                  <span>₹{selectedOrder.total_amount}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
