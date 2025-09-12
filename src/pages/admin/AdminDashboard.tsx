@@ -687,21 +687,23 @@ export default function AdminDashboard() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => setSelectedOrder(order)}
-                            className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
-                            title="View order details"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-<button
-  onClick={() => handleDeleteOrder(order.id)}
-  className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-  title="Delete order"
->
-  <Trash2 className="h-4 w-4" />
-</button>
+  <div className="flex space-x-2">
+    <button
+      onClick={() => setSelectedOrder(order)}
+      className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+      title="View order details"
+      type="button"
+    >
+      <Eye className="h-4 w-4" />
+    </button>
 
-
-                        
+    <button
+      onClick={() => handleDeleteOrder(order.id)}
+      className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+      title="Delete order"
+      type="button"
+    >
+      <Trash2 className="h-4 w-4" />
+    </button>
+  </div>
+</td>
