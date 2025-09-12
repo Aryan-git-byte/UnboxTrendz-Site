@@ -26,7 +26,6 @@ export default function AdminDashboard() {
   });
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [convertingImages, setConvertingImages] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -83,82 +82,10 @@ export default function AdminDashboard() {
     }
   };
 
-  // Function to convert image to WebP format
-  const convertToWebP = (file: File, quality: number = 0.8): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-
-      img.onload = () => {
-        // Set canvas dimensions to match image
-        canvas.width = img.width;
-        canvas.height = img.height;
-
-        // Draw image on canvas
-        ctx?.drawImage(img, 0, 0);
-
-        // Convert to WebP blob
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              // Create new file with WebP extension
-              const originalName = file.name.split('.')[0];
-              const webpFile = new File([blob], `${originalName}.webp`, {
-                type: 'image/webp',
-                lastModified: Date.now(),
-              });
-              resolve(webpFile);
-            } else {
-              reject(new Error('Failed to convert image to WebP'));
-            }
-          },
-          'image/webp',
-          quality
-        );
-      };
-
-      img.onerror = () => {
-        reject(new Error('Failed to load image for conversion'));
-      };
-
-      // Load the original image
-      img.src = URL.createObjectURL(file);
-    });
-  };
-
-  // Function to convert multiple images to WebP
-  const convertImagesToWebP = async (files: File[]): Promise<File[]> => {
-    const convertedFiles: File[] = [];
-    
-    for (const file of files) {
-      try {
-        // Only convert if it's not already WebP
-        if (file.type !== 'image/webp') {
-          const webpFile = await convertToWebP(file);
-          convertedFiles.push(webpFile);
-        } else {
-          convertedFiles.push(file);
-        }
-      } catch (error) {
-        console.error(`Failed to convert ${file.name}:`, error);
-        // If conversion fails, use original file
-        convertedFiles.push(file);
-      }
-    }
-    
-    return convertedFiles;
-  };
-
   const uploadImages = async (files: File[]): Promise<string[]> => {
     const uploadedUrls: string[] = [];
 
-    // Convert images to WebP first
-    setConvertingImages(true);
-    const convertedFiles = await convertImagesToWebP(files);
-    setConvertingImages(false);
-
-    for (const file of convertedFiles) {
+    for (const file of files) {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `products/${fileName}`;
@@ -470,7 +397,7 @@ export default function AdminDashboard() {
                           Click to select images
                         </label>
                         <p className="text-gray-500 text-sm mt-2">
-                          Images will be automatically converted to WebP format for optimal performance
+                          Select multiple images for your product
                         </p>
                         {selectedImages.length > 0 && (
                           <p className="text-green-600 text-sm mt-2">
@@ -496,15 +423,10 @@ export default function AdminDashboard() {
                     <div className="flex space-x-4">
                       <button
                         type="submit"
-                        disabled={uploading || convertingImages}
+                        disabled={uploading}
                         className="flex-1 flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50"
                       >
-                        {convertingImages ? (
-                          <>
-                            <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                            Converting images...
-                          </>
-                        ) : uploading ? (
+                        {uploading ? (
                           <>
                             <Loader2 className="animate-spin h-5 w-5 mr-2" />
                             {editingProduct ? 'Updating...' : 'Adding...'}
@@ -775,161 +697,4 @@ export default function AdminDashboard() {
                           </button>
                           <button
                             onClick={() => handleDeleteOrder(order.id)}
-                            className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                            title="Delete order"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="p-8 text-center">
-              <ShoppingBag className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">No orders yet</h3>
-              <p className="text-gray-600">Orders will appear here once customers place them.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Order Details Modal */}
-      {selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">Order Details</h2>
-                <button
-                  onClick={() => setSelectedOrder(null)}
-                  className="p-2 hover:bg-gray-100 rounded-full"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                {/* Order Info */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-800 mb-2">Order Information</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Order ID:</span>
-                      <span className="ml-2 font-mono">{selectedOrder.id}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Date:</span>
-                      <span className="ml-2">{new Date(selectedOrder.created_at).toLocaleString()}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Status:</span>
-                      <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
-                        selectedOrder.status === 'pending' ? 'bg-blue-100 text-blue-800' :
-                        selectedOrder.status === 'confirmed' ? 'bg-purple-100 text-purple-800' :
-                        selectedOrder.status === 'shipped' ? 'bg-orange-100 text-orange-800' :
-                        selectedOrder.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Payment:</span>
-                      <span className="ml-2">{selectedOrder.payment_mode === 'cod' ? 'Cash on Delivery' : 'WhatsApp Payment'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Customer Details */}
-                <div>
-                  <h3 className="font-semibold text-gray-800 mb-3 flex items-center">
-                    <User className="h-5 w-5 mr-2" />
-                    Customer Details
-                  </h3>
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
-                    <div><span className="text-gray-600">Name:</span> <span className="ml-2">{selectedOrder.customer_name}</span></div>
-                    <div><span className="text-gray-600">Phone:</span> <span className="ml-2">{selectedOrder.customer_phone}</span></div>
-                    {selectedOrder.customer_alternate_phone && (
-                      <div><span className="text-gray-600">Alternate Phone:</span> <span className="ml-2">{selectedOrder.customer_alternate_phone}</span></div>
-                    )}
-                    {selectedOrder.customer_email && (
-                      <div><span className="text-gray-600">Email:</span> <span className="ml-2">{selectedOrder.customer_email}</span></div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Delivery Address */}
-                <div>
-                  <h3 className="font-semibold text-gray-800 mb-3 flex items-center">
-                    <MapPin className="h-5 w-5 mr-2" />
-                    Delivery Address
-                  </h3>
-                  <div className="bg-gray-50 rounded-lg p-4 text-sm">
-                    <div>{selectedOrder.delivery_house_no}</div>
-                    {selectedOrder.delivery_landmark && <div>{selectedOrder.delivery_landmark}</div>}
-                    <div>{selectedOrder.delivery_city}, {selectedOrder.delivery_state}</div>
-                    <div>{selectedOrder.delivery_pincode}</div>
-                  </div>
-                </div>
-
-                {/* Order Items */}
-                <div>
-                  <h3 className="font-semibold text-gray-800 mb-3">Order Items</h3>
-                  <div className="space-y-3">
-                    {selectedOrder.order_items.map((item, index) => (
-                      <div key={index} className="flex items-center space-x-4 bg-gray-50 rounded-lg p-3">
-                        <div className="w-12 h-12 flex-shrink-0">
-                          {item.images && item.images.length > 0 ? (
-                            <img
-                              src={item.images[0]}
-                              alt={item.name}
-                              className="w-full h-full object-cover rounded-lg"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gray-200 rounded-lg flex items-center justify-center">
-                              <Package className="h-6 w-6 text-gray-400" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900">{item.name}</div>
-                          <div className="text-sm text-gray-600">{item.category}</div>
-                          <div className="text-sm text-gray-600">₹{item.price} × {item.quantity} = ₹{item.price * item.quantity}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Order Summary */}
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-800 mb-3">Order Summary</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Subtotal:</span>
-                      <span>₹{selectedOrder.total_amount - selectedOrder.delivery_charge}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Delivery Charge:</span>
-                      <span>{selectedOrder.delivery_charge === 0 ? 'FREE' : `₹${selectedOrder.delivery_charge}`}</span>
-                    </div>
-                    <div className="border-t border-gray-300 pt-2">
-                      <div className="flex justify-between font-semibold text-lg">
-                        <span>Total:</span>
-                        <span>₹{selectedOrder.total_amount}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+                            className="text-red-600 hover:text-red-900 p-1
