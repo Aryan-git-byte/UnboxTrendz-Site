@@ -288,7 +288,15 @@ export default function ProductDetailPage() {
                   Product link copied!
                 </div>
               )}
+            </div>
             
+            <button
+              onClick={handleWhatsAppOrder}
+              className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center"
+            >
+              Order via WhatsApp
+            </button>
+          </div>
 
           {/* Additional Info */}
           <div className="border-t pt-6 space-y-4">
