@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Filter, Grid, List, ShoppingBag, Star, Plus, Share2, Check, Search, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { Filter, Grid, List, ShoppingBag, Star, Plus, Share2, Check, Search, X, Eye } from 'lucide-react';
 import { supabase, type Product } from '../lib/supabase';
 import { useCart } from '../contexts/CartContext';
 
@@ -117,8 +117,6 @@ export default function ShopPage() {
   const [highlightedProductId, setHighlightedProductId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [allProducts, setAllProducts] = useState<Product[]>([]); // Store all products for search
-  const [currentImageIndex, setCurrentImageIndex] = useState<Record<string, number>>({});
-  const [imageLoading, setImageLoading] = useState<Record<string, boolean>>({});
   const { addToCart } = useCart();
 
   useEffect(() => {
@@ -140,26 +138,6 @@ export default function ShopPage() {
       setSearchQuery(search);
     }
   }, [searchParams]);
-
-  // Preload all product images
-  useEffect(() => {
-    if (allProducts.length > 0) {
-      const preloadImages = () => {
-        allProducts.forEach(product => {
-          if (product.images && product.images.length > 0) {
-            product.images.forEach(imageUrl => {
-              const img = new Image();
-              img.src = imageUrl;
-            });
-          }
-        });
-      };
-
-      // Preload images after a short delay to prioritize initial page rendering
-      const timeoutId = setTimeout(preloadImages, 100);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [allProducts]);
 
   // Scroll to and highlight specific product when products are loaded
   useEffect(() => {
@@ -289,28 +267,6 @@ export default function ShopPage() {
     setSortBy('newest');
   };
 
-  const handleImageNavigation = (productId: string, direction: 'prev' | 'next', totalImages: number) => {
-    // Set loading state to trigger fade out
-    setImageLoading(prev => ({ ...prev, [productId]: true }));
-
-    setCurrentImageIndex(prev => {
-      const currentIndex = prev[productId] || 0;
-      let newIndex;
-      
-      if (direction === 'next') {
-        newIndex = currentIndex === totalImages - 1 ? 0 : currentIndex + 1;
-      } else {
-        newIndex = currentIndex === 0 ? totalImages - 1 : currentIndex - 1;
-      }
-      
-      return { ...prev, [productId]: newIndex };
-    });
-  };
-
-  const handleImageLoad = (productId: string) => {
-    setImageLoading(prev => ({ ...prev, [productId]: false }));
-  };
-
   const handleWhatsAppOrder = (product: Product) => {
     const message = `Hi! I'm interested in ordering:\n\n*${product.name}*\nCategory: ${product.category}\nPrice: ₹${product.price}\n\nPlease let me know about availability and delivery details.`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
@@ -324,7 +280,7 @@ export default function ShopPage() {
   };
 
   const handleShareProduct = async (product: Product) => {
-    const productUrl = `${window.location.origin}/shop?product_id=${product.id}`;
+    const productUrl = `${window.location.origin}/shop/${product.id}`;
     
     try {
       await navigator.clipboard.writeText(productUrl);
@@ -489,85 +445,29 @@ export default function ShopPage() {
                       : ''
                   }`}
                 >
-                  <div className={`relative overflow-hidden ${viewMode === 'grid' ? 'h-64' : 'w-32 h-32 flex-shrink-0'}`}>
+                  <div className={`relative overflow-hidden ${viewMode === 'grid' ? '' : 'w-32 flex-shrink-0'}`}>
                     {product.images && product.images.length > 0 ? (
-                      <>
-                        {/* Loading overlay */}
-                        {imageLoading[product.id] && (
-                          <div className="absolute inset-0 bg-gray-200 flex items-center justify-center z-10">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                          </div>
-                        )}
-                        
-                        <img
-                          src={product.images[currentImageIndex[product.id] || 0]}
-                          alt={product.name}
-                          loading="lazy"
-                          onLoad={() => handleImageLoad(product.id)}
-                          className={`w-full h-full object-cover group-hover:scale-110 transition-all duration-300 ${
-                            imageLoading[product.id] ? 'opacity-0' : 'opacity-100'
-                          }`}
-                        />
-                        
-                        {/* Navigation arrows - only show if more than 1 image */}
-                        {product.images.length > 1 && (
-                          <>
-                            <button
-                              onClick={() => handleImageNavigation(product.id, 'prev', product.images.length)}
-                              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-1 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 z-20"
-                              aria-label="Previous image"
-                            >
-                              <ChevronLeft className="h-4 w-4" />
-                            </button>
-                            
-                            <button
-                              onClick={() => handleImageNavigation(product.id, 'next', product.images.length)}
-                              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-1 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 z-20"
-                              aria-label="Next image"
-                            >
-                              <ChevronRight className="h-4 w-4" />
-                            </button>
-                          </>
-                        )}
-                        
-                        {/* Image counter */}
-                        {product.images.length > 1 && !imageLoading[product.id] && (
-                          <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full z-20">
-                            {(currentImageIndex[product.id] || 0) + 1}/{product.images.length}
-                          </div>
-                        )}
-                        
-                        {/* Indicator dots */}
-                        {product.images.length > 1 && !imageLoading[product.id] && (
-                          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1 z-20">
-                            {product.images.map((_, index) => (
-                              <button
-                                key={index}
-                                onClick={() => {
-                                  if (index !== (currentImageIndex[product.id] || 0)) {
-                                    setImageLoading(prev => ({ ...prev, [product.id]: true }));
-                                    setCurrentImageIndex(prev => ({ ...prev, [product.id]: index }));
-                                  }
-                                }}
-                                className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                                  (currentImageIndex[product.id] || 0) === index 
-                                    ? 'bg-white' 
-                                    : 'bg-white bg-opacity-50 hover:bg-opacity-75'
-                                }`}
-                                aria-label={`View image ${index + 1}`}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </>
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        loading="lazy"
+                        className={`w-full h-auto object-cover group-hover:scale-110 transition-transform duration-300 ${viewMode === 'list' ? 'h-32' : ''}`}
+                      />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                      <div className={`w-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center ${viewMode === 'list' ? 'h-32' : 'h-64'}`}>
                         <ShoppingBag className="h-8 w-8 text-gray-400" />
                       </div>
                     )}
-                    <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md z-20">
+                    <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md">
                       <Star className="h-3 w-3 text-yellow-500 fill-current" />
                     </div>
+                    
+                    {/* Multiple images indicator */}
+                    {product.images && product.images.length > 1 && (
+                      <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
+                        +{product.images.length - 1} more
+                      </div>
+                    )}
                   </div>
                   <div className="p-6 flex-1">
                     {highlightedProductId === product.id && (
@@ -591,6 +491,15 @@ export default function ShopPage() {
                           <Plus className="h-4 w-4 mr-1" />
                           Add to Cart
                         </button>
+                        
+                        <Link
+                          to={`/shop/${product.id}`}
+                          className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center"
+                          title="View product details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                        
                         <button
                           onClick={() => handleShareProduct(product)}
                           className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center"
