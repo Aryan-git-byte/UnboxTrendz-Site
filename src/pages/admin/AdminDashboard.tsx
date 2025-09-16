@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Plus, Package, Eye, EyeOff, Edit, Trash2, Upload, X, Loader2, ShoppingBag, Calendar, User, Phone, MapPin, CreditCard } from 'lucide-react';
+import { Plus, Package, Eye, EyeOff, Edit, Trash2, Upload, X, Loader2, ShoppingBag, Calendar, User, Phone, MapPin, CreditCard, Mail, Home, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, type Product, type Order } from '../../lib/supabase';
 
@@ -16,6 +16,7 @@ export default function AdminDashboard() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products');
   const [formData, setFormData] = useState({
     name: '',
@@ -248,11 +249,9 @@ export default function AdminDashboard() {
   const getPaymentModeDisplay = (paymentMode: string) => {
     switch (paymentMode) {
       case 'cod':
-        return 'COD';
+        return 'Cash on Delivery';
       case 'razorpay':
-        return 'Razorpay';
-      case 'whatsapp': // Legacy support for existing orders
-        return 'WhatsApp';
+        return 'Online Payment';
       default:
         return paymentMode;
     }
@@ -265,8 +264,6 @@ export default function AdminDashboard() {
         return 'bg-yellow-100 text-yellow-800';
       case 'razorpay':
         return 'bg-blue-100 text-blue-800';
-      case 'whatsapp': // Legacy support
-        return 'bg-green-100 text-green-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -302,6 +299,18 @@ export default function AdminDashboard() {
       default:
         return status.charAt(0).toUpperCase() + status.slice(1);
     }
+  };
+
+  // Helper function to format address
+  const formatAddress = (order: Order) => {
+    const parts = [
+      order.delivery_house_no,
+      order.delivery_landmark,
+      order.delivery_city,
+      order.delivery_state,
+      order.delivery_pincode
+    ].filter(Boolean);
+    return parts.join(', ');
   };
 
   return (
@@ -659,22 +668,19 @@ export default function AdminDashboard() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Order ID
+                      Order Details
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Customer
+                      Customer Info
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total
+                      Delivery Address
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Payment
+                      Payment & Total
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
@@ -683,78 +689,169 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {orders.map((order) => (
-                    <tr key={order.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        <div className="flex items-center">
-                          <span className="font-mono">{order.id.substring(0, 8)}...</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <User className="h-4 w-4 text-gray-400 mr-2" />
+                    <React.Fragment key={order.id}>
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <div>
-                            <div className="text-sm font-medium text-gray-900">{order.customer_name}</div>
-                            <div className="text-sm text-gray-500 flex items-center">
+                            <div className="text-sm font-medium text-gray-900 font-mono">
+                              #{order.id.substring(0, 8)}...
+                            </div>
+                            <div className="text-sm text-gray-500 flex items-center mt-1">
+                              <Calendar className="h-3 w-3 mr-1" />
+                              {new Date(order.created_at).toLocaleDateString()}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {new Date(order.created_at).toLocaleTimeString()}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm">
+                            <div className="flex items-center font-medium text-gray-900 mb-1">
+                              <User className="h-3 w-3 mr-1" />
+                              {order.customer_name}
+                            </div>
+                            <div className="flex items-center text-gray-500 mb-1">
                               <Phone className="h-3 w-3 mr-1" />
                               {order.customer_phone}
                             </div>
+                            {order.customer_alternate_phone && (
+                              <div className="flex items-center text-gray-500 mb-1">
+                                <Phone className="h-3 w-3 mr-1" />
+                                {order.customer_alternate_phone} <span className="text-xs ml-1">(Alt)</span>
+                              </div>
+                            )}
+                            {order.customer_email && (
+                              <div className="flex items-center text-gray-500">
+                                <Mail className="h-3 w-3 mr-1" />
+                                <span className="truncate max-w-32">{order.customer_email}</span>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <div className="font-semibold">₹{order.total_amount}</div>
-                        <div className="text-xs text-gray-500">
-                          Items: ₹{order.total_amount - order.delivery_charge}
-                          {order.delivery_charge > 0 && ` + ₹${order.delivery_charge} delivery`}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${getPaymentModeStyle(order.payment_mode)}`}>
-                          <CreditCard className="h-3 w-3 mr-1" />
-                          {getPaymentModeDisplay(order.payment_mode)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <select
-                          value={order.status}
-                          onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
-                          className={`px-2 py-1 text-xs font-semibold rounded-full border focus:outline-none focus:ring-2 focus:ring-blue-500 ${getOrderStatusStyle(order.status)}`}
-                        >
-                          {orderStatuses.map(status => (
-                            <option key={status} value={status}>
-                              {formatStatusDisplay(status)}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-1" />
-                          <div>
-                            <div>{new Date(order.created_at).toLocaleDateString()}</div>
-                            <div className="text-xs">{new Date(order.created_at).toLocaleTimeString()}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm">
+                            <div className="flex items-start text-gray-900 mb-2">
+                              <Home className="h-3 w-3 mr-1 mt-0.5" />
+                              <div className="max-w-48">
+                                <div className="font-medium">{order.delivery_house_no}</div>
+                                {order.delivery_landmark && (
+                                  <div className="text-gray-500 text-xs">Near: {order.delivery_landmark}</div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center text-gray-500 mb-1">
+                              <MapPin className="h-3 w-3 mr-1" />
+                              {order.delivery_city}, {order.delivery_state}
+                            </div>
+                            <div className="text-xs text-gray-500 font-mono">
+                              PIN: {order.delivery_pincode}
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => setSelectedOrder(order)}
-                            className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
-                            title="View order details"
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm">
+                            <div className="font-semibold text-gray-900 mb-2">₹{order.total_amount}</div>
+                            <div className="text-xs text-gray-500 mb-2">
+                              Items: ₹{order.total_amount - order.delivery_charge}
+                              {order.delivery_charge > 0 && (
+                                <div>Delivery: ₹{order.delivery_charge}</div>
+                              )}
+                            </div>
+                            <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${getPaymentModeStyle(order.payment_mode)}`}>
+                              <CreditCard className="h-3 w-3 mr-1" />
+                              {getPaymentModeDisplay(order.payment_mode)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <select
+                            value={order.status}
+                            onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
+                            className={`px-2 py-1 text-xs font-semibold rounded-full border focus:outline-none focus:ring-2 focus:ring-blue-500 ${getOrderStatusStyle(order.status)}`}
                           >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteOrder(order.id)}
-                            className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                            title="Delete order"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                            {orderStatuses.map(status => (
+                              <option key={status} value={status}>
+                                {formatStatusDisplay(status)}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
+                              className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                              title="Toggle order items"
+                            >
+                              {expandedOrder === order.id ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => setSelectedOrder(order)}
+                              className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                              title="View full order details"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteOrder(order.id)}
+                              className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                              title="Delete order"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {/* Expandable Order Items Row */}
+                      {expandedOrder === order.id && (
+                        <tr className="bg-gray-50">
+                          <td colSpan={6} className="px-6 py-4">
+                            <div className="bg-white rounded-lg p-4 shadow-sm">
+                              <h4 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                                <ShoppingBag className="h-4 w-4 mr-2" />
+                                Order Items
+                              </h4>
+                              <div className="space-y-2">
+                                {order.order_items?.map((item: any, index: number) => (
+                                  <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                                    <div className="flex-1">
+                                      <div className="font-medium text-sm">{item.name}</div>
+                                      <div className="text-xs text-gray-500">
+                                        Price: ₹{item.price} × Qty: {item.quantity}
+                                      </div>
+                                    </div>
+                                    <div className="font-semibold text-sm">
+                                      ₹{(item.price * item.quantity).toFixed(2)}
+                                    </div>
+                                  </div>
+                                ))}
+                                <div className="border-t pt-2 mt-2">
+                                  <div className="flex justify-between items-center font-semibold">
+                                    <span>Total Items Value:</span>
+                                    <span>₹{order.total_amount - order.delivery_charge}</span>
+                                  </div>
+                                  {order.delivery_charge > 0 && (
+                                    <div className="flex justify-between items-center text-sm text-gray-600">
+                                      <span>Delivery Charge:</span>
+                                      <span>₹{order.delivery_charge}</span>
+                                    </div>
+                                  )}
+                                  <div className="flex justify-between items-center font-bold text-lg border-t pt-1 mt-1">
+                                    <span>Grand Total:</span>
+                                    <span>₹{order.total_amount}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>
@@ -776,7 +873,7 @@ export default function AdminDashboard() {
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-gray-800">
-                  Order Details
+                  Order Details - #{selectedOrder.id.substring(0, 8)}...
                 </h2>
                 <button
                   onClick={() => setSelectedOrder(null)}
@@ -786,22 +883,78 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Customer Information */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Customer Information</h3>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div className="flex items-center">
-                      <User className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="font-medium">{selectedOrder.customer_name}</span>
+                      <User className="h-4 w-4 text-gray-400 mr-3" />
+                      <div>
+                        <span className="font-medium text-gray-900">{selectedOrder.customer_name}</span>
+                      </div>
                     </div>
                     <div className="flex items-center">
-                      <Phone className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>{selectedOrder.customer_phone}</span>
+                      <Phone className="h-4 w-4 text-gray-400 mr-3" />
+                      <div>
+                        <div className="text-gray-900">{selectedOrder.customer_phone}</div>
+                        <div className="text-xs text-gray-500">Primary Phone</div>
+                      </div>
                     </div>
+                    {selectedOrder.customer_alternate_phone && (
+                      <div className="flex items-center">
+                        <Phone className="h-4 w-4 text-gray-400 mr-3" />
+                        <div>
+                          <div className="text-gray-900">{selectedOrder.customer_alternate_phone}</div>
+                          <div className="text-xs text-gray-500">Alternate Phone</div>
+                        </div>
+                      </div>
+                    )}
+                    {selectedOrder.customer_email && (
+                      <div className="flex items-center">
+                        <Mail className="h-4 w-4 text-gray-400 mr-3" />
+                        <div>
+                          <div className="text-gray-900">{selectedOrder.customer_email}</div>
+                          <div className="text-xs text-gray-500">Email Address</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Delivery Address */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Delivery Address</h3>
+                  <div className="space-y-3">
                     <div className="flex items-start">
-                      <MapPin className="h-4 w-4 text-gray-400 mr-2 mt-1" />
-                      <span className="text-sm">{selectedOrder.customer_address}</span>
+                      <Home className="h-4 w-4 text-gray-400 mr-3 mt-1" />
+                      <div>
+                        <div className="font-medium text-gray-900">{selectedOrder.delivery_house_no}</div>
+                        <div className="text-xs text-gray-500">House/Building Number</div>
+                      </div>
+                    </div>
+                    {selectedOrder.delivery_landmark && (
+                      <div className="flex items-start">
+                        <MapPin className="h-4 w-4 text-gray-400 mr-3 mt-1" />
+                        <div>
+                          <div className="text-gray-900">{selectedOrder.delivery_landmark}</div>
+                          <div className="text-xs text-gray-500">Landmark</div>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-center">
+                      <MapPin className="h-4 w-4 text-gray-400 mr-3" />
+                      <div>
+                        <div className="text-gray-900">{selectedOrder.delivery_city}, {selectedOrder.delivery_state}</div>
+                        <div className="text-xs text-gray-500">City, State</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center">
+                      <MapPin className="h-4 w-4 text-gray-400 mr-3" />
+                      <div>
+                        <div className="text-gray-900 font-mono">{selectedOrder.delivery_pincode}</div>
+                        <div className="text-xs text-gray-500">PIN Code</div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -809,10 +962,10 @@ export default function AdminDashboard() {
                 {/* Order Information */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Order Information</h3>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Order ID:</span>
-                      <span className="font-mono text-sm">{selectedOrder.id.substring(0, 8)}...</span>
+                      <span className="font-mono text-sm">{selectedOrder.id}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Status:</span>
@@ -833,41 +986,50 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 </div>
+
+                {/* Payment Summary */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Payment Summary</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Items Total:</span>
+                      <span>₹{selectedOrder.total_amount - selectedOrder.delivery_charge}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Delivery Charge:</span>
+                      <span>₹{selectedOrder.delivery_charge}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-lg font-semibold border-t pt-2">
+                      <span>Grand Total:</span>
+                      <span>₹{selectedOrder.total_amount}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Order Items */}
-              <div className="mt-6">
+              <div className="mt-8">
                 <h3 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Order Items</h3>
                 <div className="space-y-3">
-                  {selectedOrder.items?.map((item, index) => (
-                    <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <span className="font-medium">{item.name}</span>
-                        <div className="text-sm text-gray-600">
-                          Quantity: {item.quantity} × ₹{item.price}
+                  {selectedOrder.order_items?.map((item: any, index: number) => (
+                    <div key={index} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                      <div className="flex-1">
+                        <span className="font-medium text-gray-900">{item.name}</span>
+                        <div className="text-sm text-gray-600 mt-1">
+                          Unit Price: ₹{item.price} | Quantity: {item.quantity}
                         </div>
                       </div>
-                      <span className="font-semibold">₹{item.quantity * item.price}</span>
+                      <span className="font-semibold text-lg">₹{(item.quantity * item.price).toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Order Summary */}
+              {/* Complete Address Display */}
               <div className="mt-6 pt-4 border-t">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-gray-600">Subtotal:</span>
-                  <span>₹{selectedOrder.total_amount - selectedOrder.delivery_charge}</span>
-                </div>
-                {selectedOrder.delivery_charge > 0 && (
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-gray-600">Delivery Charge:</span>
-                    <span>₹{selectedOrder.delivery_charge}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center text-lg font-semibold border-t pt-2">
-                  <span>Total:</span>
-                  <span>₹{selectedOrder.total_amount}</span>
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Complete Delivery Address:</h4>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-800">{formatAddress(selectedOrder)}</p>
                 </div>
               </div>
             </div>
