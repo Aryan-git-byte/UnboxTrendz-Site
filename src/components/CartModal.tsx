@@ -3,6 +3,13 @@ import { X, Plus, Minus, Trash2, ShoppingCart, User, Phone, Mail, MapPin, Home, 
 import { useCart } from '../contexts/CartContext';
 import { supabase } from '../lib/supabase';
 
+// Declare Razorpay interface for TypeScript
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 export default function CartModal() {
   const { state, removeFromCart, updateQuantity, clearCart, closeCart } = useCart();
   const [customerDetails, setCustomerDetails] = useState({
@@ -18,10 +25,28 @@ export default function CartModal() {
     paymentMode: 'cod',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingRazorpay, setIsLoadingRazorpay] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const deliveryCharge = state.totalPrice >= 299 ? 0 : 40; 
   const finalTotal = state.totalPrice + deliveryCharge;
+
+  // Load Razorpay script
+  React.useEffect(() => {
+    const loadRazorpayScript = () => {
+      return new Promise((resolve) => {
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+      });
+    };
+
+    if (!window.Razorpay) {
+      loadRazorpayScript();
+    }
+  }, []);
 
   if (!state.isOpen) return null;
 
@@ -33,174 +58,233 @@ export default function CartModal() {
     }
   };
 
-  // Updated handlePlaceOrder function with better error handling and debugging
-const handlePlaceOrder = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  if (!customerDetails.name.trim() || !customerDetails.phone.trim() || 
-      !customerDetails.houseNo.trim() || !customerDetails.city.trim() || 
-      !customerDetails.state.trim() || !customerDetails.pincode.trim()) {
-    alert('Please fill in all required fields (Name, Phone, House No., City, State, Pincode)');
-    return;
-  }
+  const createRazorpayOrder = async (amount: number) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-razorpay-order`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount,
+          currency: 'INR',
+          receipt: `order_${Date.now()}`,
+        }),
+      });
 
-  if (state.items.length === 0) {
-    alert('Your cart is empty');
-    return;
-  }
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to create Razorpay order');
+      }
 
-  setIsSubmitting(true);
+      return data.order;
+    } catch (error) {
+      console.error('Error creating Razorpay order:', error);
+      throw error;
+    }
+  };
 
-  try {
-    // Prepare order data for Supabase
-    const orderData = {
-      customer_name: customerDetails.name.trim(),
-      customer_phone: customerDetails.phone.trim(),
-      customer_alternate_phone: customerDetails.alternatePhone?.trim() || null,
-      customer_email: customerDetails.email?.trim() || null,
-      delivery_house_no: customerDetails.houseNo.trim(),
-      delivery_landmark: customerDetails.landmark?.trim() || null,
-      delivery_city: customerDetails.city.trim(),
-      delivery_state: customerDetails.state.trim(),
-      delivery_pincode: customerDetails.pincode.trim(),
-      payment_mode: customerDetails.paymentMode,
-      total_amount: Number(finalTotal),
-      delivery_charge: Number(deliveryCharge),
-      order_items: state.items.map(item => ({
-        id: item.id,
-        name: item.name,
-        price: Number(item.price),
-        quantity: Number(item.quantity),
-        category: item.category,
-        images: item.images || [],
-      })),
-    };
-
-    console.log('Attempting to insert order data:', orderData);
-
-    // Try to save order to Supabase
-    const { data: newOrder, error: supabaseError } = await supabase
-      .from('orders')
-      .insert([orderData])
-      .select()
-      .single();
-
-    if (supabaseError) {
-      console.error('Supabase error details:', supabaseError);
-      throw supabaseError;
+  const handleRazorpayPayment = async (orderData: any) => {
+    if (!window.Razorpay) {
+      alert('Payment gateway is not loaded. Please refresh and try again.');
+      return;
     }
 
-    console.log('Order saved successfully:', newOrder);
+    setIsLoadingRazorpay(true);
 
-    // Format order details for WhatsApp
-    let message = ` *New Order from UnboxTrendz*\n\n`;
-    message += ` *Order ID:* ${newOrder.id.substring(0, 8)}\n\n`;
-    message += ` *Customer Details:*\n`;
-    message += `Name: ${customerDetails.name}\n`;
-    message += `Phone: ${customerDetails.phone}\n`;
-    if (customerDetails.alternatePhone) {
-      message += `Alternate Phone: ${customerDetails.alternatePhone}\n`;
-    }
-    if (customerDetails.email) {
-      message += `Email: ${customerDetails.email}\n`;
-    }
-    
-    message += `\n *Delivery Address:*\n`;
-    message += `House No.: ${customerDetails.houseNo}\n`;
-    if (customerDetails.landmark) {
-      message += `Landmark: ${customerDetails.landmark}\n`;
-    }
-    message += `City: ${customerDetails.city}\n`;
-    message += `State: ${customerDetails.state}\n`;
-    message += `Pincode: ${customerDetails.pincode}\n\n`;
-    
-    message += ` *Payment Mode:*\n`;
-    message += `${customerDetails.paymentMode === 'cod' ? 'Cash on Delivery (COD)' : 'WhatsApp Payment'}\n\n`;
-    
-    message += ` *Order Items:*\n`;
-    state.items.forEach((item, index) => {
-      message += `${index + 1}. *${item.name}*\n`;
-      message += `   Category: ${item.category}\n`;
-      message += `   Price: ₹${item.price} x ${item.quantity} = ₹${item.price * item.quantity}\n\n`;
-    });
-    
-    message += ` *Order Summary:*\n`;
-    message += `Subtotal: ₹${state.totalPrice}\n`;
-    message += `Delivery Charge: ${deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}\n`;
-    message += `Final Total: ₹${finalTotal}\n\n`;
-    message += `Please confirm availability and delivery details. Thank you! `;
+    try {
+      // Create Razorpay order
+      const razorpayOrder = await createRazorpayOrder(finalTotal);
 
-    const whatsappUrl = `https://wa.me/919835808590?text=${encodeURIComponent(message)}`;
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        name: 'UnboxTrendz',
+        description: 'Order Payment',
+        order_id: razorpayOrder.id,
+        prefill: {
+          name: customerDetails.name,
+          email: customerDetails.email,
+          contact: customerDetails.phone,
+        },
+        theme: {
+          color: '#3B82F6',
+        },
+        handler: async (response: any) => {
+          try {
+            // Payment successful - update order status
+            const { error: updateError } = await supabase
+              .from('orders')
+              .update({ 
+                status: 'confirmed',
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+              })
+              .eq('id', orderData.id);
 
-    if (customerDetails.paymentMode === 'cod') {
-      // Show success message for COD
-      setSuccessMessage('Order placed successfully! We will contact you shortly to confirm details.');
-      setShowSuccess(true);
+            if (updateError) {
+              console.error('Error updating order status:', updateError);
+            }
+
+            setSuccessMessage('Payment successful! Your order has been confirmed.');
+            setShowSuccess(true);
+            
+            setTimeout(() => {
+              clearCart();
+              setCustomerDetails({
+                name: '',
+                phone: '',
+                alternatePhone: '',
+                email: '',
+                houseNo: '',
+                landmark: '',
+                city: '',
+                state: '',
+                pincode: '',
+                paymentMode: 'cod'
+              });
+              setShowSuccess(false);
+              closeCart();
+            }, 3000);
+          } catch (error) {
+            console.error('Error handling payment success:', error);
+            alert('Payment was successful but there was an error updating your order. Please contact support.');
+          }
+        },
+        modal: {
+          ondismiss: async () => {
+            // Payment cancelled - update order status
+            try {
+              await supabase
+                .from('orders')
+                .update({ status: 'cancelled' })
+                .eq('id', orderData.id);
+            } catch (error) {
+              console.error('Error updating cancelled order:', error);
+            }
+            alert('Payment was cancelled. Your order has been cancelled.');
+          },
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+    } catch (error) {
+      console.error('Error initiating Razorpay payment:', error);
+      alert('Failed to initiate payment. Please try again.');
       
-      // Clear cart and form after successful order
-      setTimeout(() => {
-        clearCart();
-        setCustomerDetails({ 
-          name: '', 
-          phone: '', 
-          alternatePhone: '',
-          email: '', 
-          houseNo: '',
-          landmark: '',
-          city: '',
-          state: '',
-          pincode: '',
-          paymentMode: 'cod'
-        });
-        setShowSuccess(false);
-        closeCart();
-      }, 3000);
-    } else if (customerDetails.paymentMode === 'whatsapp') {
-      // Redirect to WhatsApp for WhatsApp Payment
-      window.open(whatsappUrl, '_blank');
-      setSuccessMessage('Redirecting to WhatsApp for payment. Please complete the payment process.');
-      setShowSuccess(true);
-      
-      // Clear cart and form after redirect
-      setTimeout(() => {
-        clearCart();
-        setCustomerDetails({ 
-          name: '', 
-          phone: '', 
-          alternatePhone: '',
-          email: '', 
-          houseNo: '',
-          landmark: '',
-          city: '',
-          state: '',
-          pincode: '',
-          paymentMode: 'cod'
-        });
-        setShowSuccess(false);
-        closeCart();
-      }, 2000);
+      // Update order status to failed
+      try {
+        await supabase
+          .from('orders')
+          .update({ status: 'failed' })
+          .eq('id', orderData.id);
+      } catch (updateError) {
+        console.error('Error updating failed order:', updateError);
+      }
+    } finally {
+      setIsLoadingRazorpay(false);
+    }
+  };
+
+  const handlePlaceOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!customerDetails.name.trim() || !customerDetails.phone.trim() || 
+        !customerDetails.houseNo.trim() || !customerDetails.city.trim() || 
+        !customerDetails.state.trim() || !customerDetails.pincode.trim()) {
+      alert('Please fill in all required fields (Name, Phone, House No., City, State, Pincode)');
+      return;
     }
 
-  } catch (error) {
-    console.error('Detailed error placing order:', error);
-    
-    // More detailed error message
-    let errorMessage = 'Failed to place order. ';
-    if (error && typeof error === 'object' && 'message' in error) {
-      errorMessage += `Error: ${error.message}`;
+    if (state.items.length === 0) {
+      alert('Your cart is empty');
+      return;
     }
-    if (error && typeof error === 'object' && 'details' in error) {
-      errorMessage += ` Details: ${error.details}`;
+
+    setIsSubmitting(true);
+
+    try {
+      // Prepare order data for Supabase
+      const orderData = {
+        customer_name: customerDetails.name.trim(),
+        customer_phone: customerDetails.phone.trim(),
+        customer_alternate_phone: customerDetails.alternatePhone?.trim() || null,
+        customer_email: customerDetails.email?.trim() || null,
+        delivery_house_no: customerDetails.houseNo.trim(),
+        delivery_landmark: customerDetails.landmark?.trim() || null,
+        delivery_city: customerDetails.city.trim(),
+        delivery_state: customerDetails.state.trim(),
+        delivery_pincode: customerDetails.pincode.trim(),
+        payment_mode: customerDetails.paymentMode,
+        total_amount: Number(finalTotal),
+        delivery_charge: Number(deliveryCharge),
+        order_items: state.items.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: Number(item.price),
+          quantity: Number(item.quantity),
+          category: item.category,
+          images: item.images || [],
+        })),
+        status: customerDetails.paymentMode === 'cod' ? 'pending' : 'payment_pending',
+      };
+
+      // Save order to Supabase
+      const { data: newOrder, error: supabaseError } = await supabase
+        .from('orders')
+        .insert([orderData])
+        .select()
+        .single();
+
+      if (supabaseError) {
+        console.error('Supabase error details:', supabaseError);
+        throw supabaseError;
+      }
+
+      if (customerDetails.paymentMode === 'cod') {
+        // Show success message for COD
+        setSuccessMessage('Order placed successfully! We will contact you shortly to confirm details.');
+        setShowSuccess(true);
+        
+        setTimeout(() => {
+          clearCart();
+          setCustomerDetails({
+            name: '',
+            phone: '',
+            alternatePhone: '',
+            email: '',
+            houseNo: '',
+            landmark: '',
+            city: '',
+            state: '',
+            pincode: '',
+            paymentMode: 'cod'
+          });
+          setShowSuccess(false);
+          closeCart();
+        }, 3000);
+      } else if (customerDetails.paymentMode === 'razorpay') {
+        // Initiate Razorpay payment
+        await handleRazorpayPayment(newOrder);
+      }
+
+    } catch (error) {
+      console.error('Detailed error placing order:', error);
+      
+      let errorMessage = 'Failed to place order. ';
+      if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage += `Error: ${error.message}`;
+      }
+      
+      alert(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
-    if (error && typeof error === 'object' && 'hint' in error) {
-      errorMessage += ` Hint: ${error.hint}`;
-    }
-    
-    alert(errorMessage);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   if (showSuccess) {
     return (
@@ -210,7 +294,7 @@ const handlePlaceOrder = async (e: React.FormEvent) => {
             <ShoppingCart className="h-8 w-8 text-green-600" />
           </div>
           <h3 className="text-xl font-bold text-gray-800 mb-2">
-            {customerDetails.paymentMode === 'cod' ? 'Order Placed Successfully!' : 'Redirecting to WhatsApp...'}
+            {customerDetails.paymentMode === 'cod' ? 'Order Placed Successfully!' : 'Payment Processing...'}
           </h3>
           <p className="text-gray-600 mb-4">
             {successMessage}
@@ -501,12 +585,12 @@ const handlePlaceOrder = async (e: React.FormEvent) => {
                       <input
                         type="radio"
                         name="paymentMode"
-                        value="whatsapp"
-                        checked={customerDetails.paymentMode === 'whatsapp'}
+                        value="razorpay"
+                        checked={customerDetails.paymentMode === 'razorpay'}
                         onChange={(e) => setCustomerDetails({ ...customerDetails, paymentMode: e.target.value })}
                         className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                       />
-                      <span className="ml-3 text-sm font-medium text-gray-700">WhatsApp Payment</span>
+                      <span className="ml-3 text-sm font-medium text-gray-700">Pay Now (Online Payment)</span>
                     </label>
                   </div>
                 </div>
@@ -514,10 +598,13 @@ const handlePlaceOrder = async (e: React.FormEvent) => {
                 <div className="flex space-x-4 pt-4">
                   <button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isLoadingRazorpay}
                     className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-green-600 hover:to-green-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isSubmitting ? 'Placing Order...' : 'Place Order'}
+                    {isSubmitting || isLoadingRazorpay ? 
+                      (customerDetails.paymentMode === 'razorpay' ? 'Processing Payment...' : 'Placing Order...') : 
+                      (customerDetails.paymentMode === 'razorpay' ? 'Pay Now' : 'Place Order')
+                    }
                   </button>
                   <button
                     type="button"

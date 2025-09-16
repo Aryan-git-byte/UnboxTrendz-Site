@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase, type Product, type Order } from '../../lib/supabase';
 
 const categories = ['Toys', 'Gifts', 'Kitchen & Home decor', 'Jewellery', 'Gadgets', 'Stationery'];
-const orderStatuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+const orderStatuses = ['pending', 'payment_pending', 'confirmed', 'shipped', 'delivered', 'cancelled', 'failed'];
 
 export default function AdminDashboard() {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -519,12 +519,14 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            product.visible 
+                            order.payment_mode === 'cod' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
+                              order.status === 'payment_pending' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
                               ? 'bg-green-100 text-green-800' 
                               : 'bg-red-100 text-red-800'
                           }`}>
+                              order.status === 'failed' ? 'bg-gray-100 text-gray-800 border-gray-300' :
                             {product.visible ? 'Visible' : 'Hidden'}
-                          </span>
+                            {order.payment_mode === 'cod' ? 'COD' : 'Online'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
