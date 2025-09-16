@@ -445,16 +445,19 @@ export default function ShopPage() {
                       : ''
                   }`}
                 >
-                  <div className={`relative overflow-hidden ${viewMode === 'grid' ? '' : 'w-32 flex-shrink-0'}`}>
+                  <Link 
+                    to={`/shop/${product.id}`}
+                    className={`relative overflow-hidden block ${viewMode === 'grid' ? '' : 'w-32 flex-shrink-0'}`}
+                  >
                     {product.images && product.images.length > 0 ? (
                       <img
                         src={product.images[0]}
                         alt={product.name}
                         loading="lazy"
-                        className={`w-full h-auto object-cover group-hover:scale-110 transition-transform duration-300 ${viewMode === 'list' ? 'h-32' : ''}`}
+                        className={`w-full h-auto object-cover group-hover:scale-110 transition-transform duration-300 cursor-pointer ${viewMode === 'list' ? 'h-32' : ''}`}
                       />
                     ) : (
-                      <div className={`w-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center ${viewMode === 'list' ? 'h-32' : 'h-64'}`}>
+                      <div className={`w-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center cursor-pointer ${viewMode === 'list' ? 'h-32' : 'h-64'}`}>
                         <ShoppingBag className="h-8 w-8 text-gray-400" />
                       </div>
                     )}
@@ -468,7 +471,8 @@ export default function ShopPage() {
                         +{product.images.length - 1} more
                       </div>
                     )}
-                  </div>
+                  </Link>
+                  
                   <div className="p-6 flex-1">
                     {highlightedProductId === product.id && (
                       <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-2 text-center">
@@ -479,7 +483,9 @@ export default function ShopPage() {
                       <span className="text-sm text-blue-600 font-medium">{product.category}</span>
                       <span className="text-lg font-bold text-gray-800">₹{product.price}</span>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2">{product.name}</h3>
+                    <Link to={`/shop/${product.id}`}>
+                      <h3 className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2 hover:text-blue-600 transition-colors cursor-pointer">{product.name}</h3>
+                    </Link>
                     <p className="text-gray-600 text-sm mb-4 line-clamp-2">{product.description}</p>
                     
                     <div className="space-y-2">
