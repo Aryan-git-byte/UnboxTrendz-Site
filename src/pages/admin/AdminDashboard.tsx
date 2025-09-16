@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase, type Product, type Order } from '../../lib/supabase';
 
 const categories = ['Toys', 'Gifts', 'Kitchen & Home decor', 'Jewellery', 'Gadgets', 'Stationery'];
-const orderStatuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+const orderStatuses = ['pending', 'payment_pending', 'confirmed', 'shipped', 'delivered', 'cancelled', 'failed'];
 
 export default function AdminDashboard() {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -242,6 +242,66 @@ export default function AdminDashboard() {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     setSelectedImages(files);
+  };
+
+  // Helper function to get payment mode display
+  const getPaymentModeDisplay = (paymentMode: string) => {
+    switch (paymentMode) {
+      case 'cod':
+        return 'COD';
+      case 'razorpay':
+        return 'Razorpay';
+      case 'whatsapp': // Legacy support for existing orders
+        return 'WhatsApp';
+      default:
+        return paymentMode;
+    }
+  };
+
+  // Helper function to get payment mode styling
+  const getPaymentModeStyle = (paymentMode: string) => {
+    switch (paymentMode) {
+      case 'cod':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'razorpay':
+        return 'bg-blue-100 text-blue-800';
+      case 'whatsapp': // Legacy support
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Helper function to get order status styling
+  const getOrderStatusStyle = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-gray-100 text-gray-800 border-gray-300';
+      case 'payment_pending':
+        return 'bg-orange-100 text-orange-800 border-orange-300';
+      case 'confirmed':
+        return 'bg-purple-100 text-purple-800 border-purple-300';
+      case 'shipped':
+        return 'bg-indigo-100 text-indigo-800 border-indigo-300';
+      case 'delivered':
+        return 'bg-green-100 text-green-800 border-green-300';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800 border-red-300';
+      case 'failed':
+        return 'bg-red-100 text-red-800 border-red-300';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
+  // Helper function to format status display
+  const formatStatusDisplay = (status: string) => {
+    switch (status) {
+      case 'payment_pending':
+        return 'Payment Pending';
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1);
+    }
   };
 
   return (
@@ -649,30 +709,20 @@ export default function AdminDashboard() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${
-                          order.payment_mode === 'cod' 
-                            ? 'bg-yellow-100 text-yellow-800' 
-                            : 'bg-green-100 text-green-800'
-                        }`}>
+                        <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${getPaymentModeStyle(order.payment_mode)}`}>
                           <CreditCard className="h-3 w-3 mr-1" />
-                          {order.payment_mode === 'cod' ? 'COD' : 'WhatsApp'}
+                          {getPaymentModeDisplay(order.payment_mode)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <select
                           value={order.status}
                           onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
-                          className={`px-2 py-1 text-xs font-semibold rounded-full border focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                            order.status === 'pending' ? 'bg-blue-100 text-blue-800 border-blue-300' :
-                            order.status === 'confirmed' ? 'bg-purple-100 text-purple-800 border-purple-300' :
-                            order.status === 'shipped' ? 'bg-orange-100 text-orange-800 border-orange-300' :
-                            order.status === 'delivered' ? 'bg-green-100 text-green-800 border-green-300' :
-                            'bg-red-100 text-red-800 border-red-300'
-                          }`}
+                          className={`px-2 py-1 text-xs font-semibold rounded-full border focus:outline-none focus:ring-2 focus:ring-blue-500 ${getOrderStatusStyle(order.status)}`}
                         >
                           {orderStatuses.map(status => (
                             <option key={status} value={status}>
-                              {status.charAt(0).toUpperCase() + status.slice(1)}
+                              {formatStatusDisplay(status)}
                             </option>
                           ))}
                         </select>
@@ -766,21 +816,15 @@ export default function AdminDashboard() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Status:</span>
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        selectedOrder.status === 'pending' ? 'bg-blue-100 text-blue-800' :
-                        selectedOrder.status === 'confirmed' ? 'bg-purple-100 text-purple-800' :
-                        selectedOrder.status === 'shipped' ? 'bg-orange-100 text-orange-800' :
-                        selectedOrder.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getOrderStatusStyle(selectedOrder.status)}`}>
+                        {formatStatusDisplay(selectedOrder.status)}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Payment Method:</span>
                       <span className="flex items-center">
                         <CreditCard className="h-4 w-4 mr-1" />
-                        {selectedOrder.payment_mode === 'cod' ? 'Cash on Delivery' : 'WhatsApp Payment'}
+                        {getPaymentModeDisplay(selectedOrder.payment_mode)}
                       </span>
                     </div>
                     <div className="flex justify-between">
