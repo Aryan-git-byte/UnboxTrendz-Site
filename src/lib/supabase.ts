@@ -38,7 +38,7 @@ export type Order = {
   delivery_city: string;
   delivery_state: string;
   delivery_pincode: string;
-  payment_mode: 'cod' | 'whatsapp';
+  payment_mode: 'cod' | 'razorpay';
   total_amount: number;
   delivery_charge: number;
   order_items: Array<{
