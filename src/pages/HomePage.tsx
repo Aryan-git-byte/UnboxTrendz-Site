@@ -193,16 +193,19 @@ export default function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {featuredProducts.map((product) => (
                 <div key={product.id} className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
-                  <div className="relative overflow-hidden">
+                  <Link 
+                    to={`/shop/${product.id}`}
+                    className="relative overflow-hidden block"
+                  >
                     {product.images && product.images.length > 0 ? (
                       <img
                         src={product.images[0]}
                         alt={product.name}
                         loading="lazy"
-                        className="w-full h-auto object-cover group-hover:scale-110 transition-transform duration-300"
+                        className="w-full h-auto object-cover group-hover:scale-110 transition-transform duration-300 cursor-pointer"
                       />
                     ) : (
-                      <div className="w-full h-64 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                      <div className="w-full h-64 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center cursor-pointer">
                         <ShoppingBag className="h-16 w-16 text-gray-400" />
                       </div>
                     )}
@@ -216,13 +219,16 @@ export default function HomePage() {
                         +{product.images.length - 1} more
                       </div>
                     )}
-                  </div>
+                  </Link>
+                  
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-blue-600 font-medium">{product.category}</span>
                       <span className="text-lg font-bold text-gray-800">₹{product.price}</span>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2">{product.name}</h3>
+                    <Link to={`/shop/${product.id}`}>
+                      <h3 className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2 hover:text-blue-600 transition-colors cursor-pointer">{product.name}</h3>
+                    </Link>
                     <p className="text-gray-600 text-sm mb-4 line-clamp-2">{product.description}</p>
                     
                     <div className="space-y-3">
