@@ -119,7 +119,8 @@ export default function PoliciesPage() {
 
             <h3 className="text-lg font-semibold text-gray-800 mb-3">Return Policy</h3>
             <p className="text-gray-600 mb-4">
-              We accept returns within 7 days of delivery for items that are unused, in original condition, and in original packaging.
+            Returns are accepted within 7 days of delivery for items that are unused, in original condition, and in original packaging.
+            ➡️ Important: An unboxing/opening video is required as proof to process any return.
             </p>
 
             <h3 className="text-lg font-semibold text-gray-800 mb-3">Refund Process</h3>
@@ -134,7 +135,7 @@ export default function PoliciesPage() {
 
             <h3 className="text-lg font-semibold text-gray-800 mb-3">Damaged or Defective Items</h3>
             <p className="text-gray-600 mb-4">
-              If you receive a damaged or defective item, please contact us immediately with photos of the item. We will arrange for a replacement or full refund.
+              If you receive a damaged or defective item, contact us immediately with photos and the unboxing video. We will arrange a replacement or full refund.
             </p>
           </div>
         </section>
