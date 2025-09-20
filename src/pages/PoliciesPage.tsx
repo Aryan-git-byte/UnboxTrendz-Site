@@ -95,7 +95,7 @@ export default function PoliciesPage() {
 
             <h3 className="text-lg font-semibold text-gray-800 mb-3">Delivery Time</h3>
             <p className="text-gray-600 mb-4">
-              Standard delivery takes 3-7 business days depending on your location. Express delivery options may be available for certain areas.
+              Delivery takes minimum 3 days and maximum 7 days depending on location. Express delivery options may be available for certain areas.
             </p>
 
             <h3 className="text-lg font-semibold text-gray-800 mb-3">Delivery Issues</h3>
