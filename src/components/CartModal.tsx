@@ -28,7 +28,17 @@ export default function CartModal() {
   const [isLoadingRazorpay, setIsLoadingRazorpay] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const deliveryCharge = state.totalPrice >= 299 ? 0 : 40; 
+  
+  // Updated delivery charge logic
+  const getDeliveryCharge = () => {
+    if (customerDetails.paymentMode === 'cod') {
+      return 80; // COD orders always have ₹80 delivery charge
+    } else {
+      return state.totalPrice >= 299 ? 0 : 40; // Prepaid orders: free above ₹299, ₹40 below
+    }
+  };
+  
+  const deliveryCharge = getDeliveryCharge();
   const finalTotal = state.totalPrice + deliveryCharge;
 
   // Load Razorpay script
@@ -397,10 +407,17 @@ export default function CartModal() {
                       {deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}
                     </span>
                   </div>
-                  {state.totalPrice < 299 && (
-                    <div className="text-xs text-gray-600 italic">
-                      Add ₹{299 - state.totalPrice} more for free delivery!
+                  {/* Updated delivery charge message based on payment mode */}
+                  {customerDetails.paymentMode === 'cod' ? (
+                    <div className="text-xs text-orange-600 italic">
+                      COD orders have ₹80 delivery charge
                     </div>
+                  ) : (
+                    state.totalPrice < 299 && (
+                      <div className="text-xs text-gray-600 italic">
+                        Add ₹{299 - state.totalPrice} more for free delivery with online payment!
+                      </div>
+                    )
                   )}
                   <div className="border-t border-gray-300 pt-2">
                     <div className="flex justify-between items-center text-lg font-bold text-gray-800">
@@ -579,7 +596,9 @@ export default function CartModal() {
                         onChange={(e) => setCustomerDetails({ ...customerDetails, paymentMode: e.target.value })}
                         className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                       />
-                      <span className="ml-3 text-sm font-medium text-gray-700">Cash on Delivery (COD)</span>
+                      <span className="ml-3 text-sm font-medium text-gray-700">
+                        Cash on Delivery (COD) - ₹80 delivery charge
+                      </span>
                     </label>
                     <label className="flex items-center cursor-pointer">
                       <input
@@ -590,7 +609,9 @@ export default function CartModal() {
                         onChange={(e) => setCustomerDetails({ ...customerDetails, paymentMode: e.target.value })}
                         className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                       />
-                      <span className="ml-3 text-sm font-medium text-gray-700">Pay Now (Online Payment)</span>
+                      <span className="ml-3 text-sm font-medium text-gray-700">
+                        Pay Now (Online Payment) - {state.totalPrice >= 299 ? 'Free delivery' : '₹40 delivery charge'}
+                      </span>
                     </label>
                   </div>
                 </div>
