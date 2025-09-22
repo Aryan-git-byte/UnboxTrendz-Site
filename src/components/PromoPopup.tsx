@@ -43,7 +43,7 @@ export default function PromoPopup() {
         {/* Promotional poster */}
         <div className="relative overflow-hidden rounded-2xl shadow-2xl h-full">
           <img
-            src="/Beige Simple Elegant Spa and Beauty Discount Instagram Story (1).png"
+            src="/-Beige Simple Elegant Spa and Beauty Discount Instagram Story (1).png"
             alt="UnboxTrendz - 25% OFF Jewellery with Best Deals - Launching and Festive Discount"
             className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
             onClick={handleClose}
