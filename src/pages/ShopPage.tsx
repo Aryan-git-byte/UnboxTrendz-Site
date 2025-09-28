@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Filter, Grid, List, ShoppingBag, Star, Plus, Share2, Check, Search, X, Eye } from 'lucide-react';
+import { Filter, Grid2x2 as Grid, List, ShoppingBag, Star, Plus, Share2, Check, Search, X, Eye } from 'lucide-react';
 import { supabase, type Product } from '../lib/supabase';
 import { useCart } from '../contexts/CartContext';
 
@@ -484,7 +484,14 @@ export default function ShopPage() {
                       <span className="text-lg font-bold text-gray-800">₹{product.price}</span>
                     </div>
                     <Link to={`/shop/${product.id}`}>
-                      <h3 className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2 hover:text-blue-600 transition-colors cursor-pointer">{product.name}</h3>
+                      <h3 className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2 hover:text-blue-600 transition-colors cursor-pointer">
+                        {product.name}
+                        {product.variant_name && product.variant_name !== 'Default' && (
+                          <span className="text-sm font-normal text-gray-600 ml-2">
+                            ({product.variant_name})
+                          </span>
+                        )}
+                      </h3>
                     </Link>
                     <p className="text-gray-600 text-sm mb-4 line-clamp-2">{product.description}</p>
                     
