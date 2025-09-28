@@ -4,7 +4,7 @@ import { Package, Plus, CreditCard as Edit, Trash2, Eye, EyeOff, Save, X, Upload
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, type Product, type Order } from '../../lib/supabase';
 
-const categories = ['Toys', 'Gifts', 'Kitchen & Home decor', 'Jewellery', 'Jhumka', 'Hair accessories'];
+const categories = ['Toys', 'Gifts', 'Kitchen & Home decor', 'Jewellery', 'Jhumka', 'Earrings', 'Hair accessories'];
 
 export default function AdminDashboard() {
   const { user, isAdmin, loading: authLoading } = useAuth();
