@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Plus, Minus, Trash2, ShoppingCart, User, Phone, Mail, MapPin, Home, Landmark, Building, CreditCard } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { supabase } from '../lib/supabase';
+import { generateOrderMemoHtml, downloadOrderMemo, downloadHtmlFile } from '../lib/orderMemoGenerator';
 
 // Declare Razorpay interface for TypeScript
 declare global {
@@ -40,6 +41,42 @@ export default function CartModal() {
   
   const deliveryCharge = getDeliveryCharge();
   const finalTotal = state.totalPrice + deliveryCharge;
+
+  // Function to download order memo
+  const downloadAndDisplayMemo = (orderData: any) => {
+    try {
+      // Use the download function from the utility
+      downloadOrderMemo(orderData);
+      
+      // Show success message with download info
+      setSuccessMessage(
+        customerDetails.paymentMode === 'cod' 
+          ? 'Order placed successfully! Your bill is being downloaded automatically.'
+          : 'Payment successful! Your bill is being downloaded automatically.'
+      );
+    } catch (error) {
+      console.error('Error downloading memo:', error);
+      
+      // Fallback: try to download as HTML file
+      try {
+        const memoHtml = generateOrderMemoHtml(orderData);
+        downloadHtmlFile(memoHtml, `order-memo-${orderData.id}.html`);
+        
+        setSuccessMessage(
+          customerDetails.paymentMode === 'cod' 
+            ? 'Order placed successfully! Your bill has been downloaded as an HTML file.'
+            : 'Payment successful! Your bill has been downloaded as an HTML file.'
+        );
+      } catch (fallbackError) {
+        console.error('Error with fallback download:', fallbackError);
+        setSuccessMessage(
+          customerDetails.paymentMode === 'cod' 
+            ? 'Order placed successfully! (Unable to download bill - please contact support for a copy)'
+            : 'Payment successful! (Unable to download bill - please contact support for a copy)'
+        );
+      }
+    }
+  };
 
   // Load Razorpay script
   React.useEffect(() => {
@@ -139,7 +176,12 @@ export default function CartModal() {
               console.error('Error updating order status:', updateError);
             }
 
-            setSuccessMessage('Payment successful! Your order has been confirmed.');
+            // Generate and download order memo
+            const updatedOrderData = {
+              ...orderData,
+              status: 'confirmed',
+            };
+            downloadAndDisplayMemo(updatedOrderData);
             setShowSuccess(true);
             
             setTimeout(() => {
@@ -158,7 +200,7 @@ export default function CartModal() {
               });
               setShowSuccess(false);
               closeCart();
-            }, 3000);
+            }, 4000);
           } catch (error) {
             console.error('Error handling payment success:', error);
             alert('Payment was successful but there was an error updating your order. Please contact support.');
@@ -256,8 +298,8 @@ export default function CartModal() {
       }
 
       if (customerDetails.paymentMode === 'cod') {
-        // Show success message for COD
-        setSuccessMessage('Order placed successfully! We will contact you shortly to confirm details.');
+        // Generate and download order memo for COD orders
+        downloadAndDisplayMemo(newOrder);
         setShowSuccess(true);
         
         setTimeout(() => {
@@ -276,7 +318,7 @@ export default function CartModal() {
           });
           setShowSuccess(false);
           closeCart();
-        }, 3000);
+        }, 4000);
       } else if (customerDetails.paymentMode === 'razorpay') {
         // Initiate Razorpay payment
         await handleRazorpayPayment(newOrder);
@@ -304,7 +346,7 @@ export default function CartModal() {
             <ShoppingCart className="h-8 w-8 text-green-600" />
           </div>
           <h3 className="text-xl font-bold text-gray-800 mb-2">
-            {customerDetails.paymentMode === 'cod' ? 'Order Placed Successfully!' : 'Payment Processing...'}
+            {customerDetails.paymentMode === 'cod' ? 'Order Placed Successfully!' : 'Payment Successful!'}
           </h3>
           <p className="text-gray-600 mb-4">
             {successMessage}
