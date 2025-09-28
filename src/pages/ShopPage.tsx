@@ -4,7 +4,7 @@ import { Filter, Grid2x2 as Grid, List, ShoppingBag, Star, Plus, Share2, Check, 
 import { supabase, type Product } from '../lib/supabase';
 import { useCart } from '../contexts/CartContext';
 
-const categories = ['Toys', 'Gifts', 'Kitchen & Home decor', 'Jewellery', 'Gadgets', 'Stationery'];
+const categories = ['Toys', 'Gifts', 'Kitchen & Home decor', 'Jewellery', 'Jhumka', 'Hair accessories'];
 const sortOptions = [
   { value: 'newest', label: 'Newest First' },
   { value: 'price-low', label: 'Price: Low to High' },
@@ -169,10 +169,12 @@ export default function ShopPage() {
   const fetchAllProducts = async () => {
     setLoading(true);
     try {
+      // Filter out variants - only show products where parent_product_id is null
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('visible', true);
+        .eq('visible', true)
+        .is('parent_product_id', null); // Only fetch parent products, not variants
 
       if (error) throw error;
       setAllProducts(data || []);
