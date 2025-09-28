@@ -6,12 +6,12 @@ import { supabase, type Product } from '../lib/supabase';
 import { useCart } from '../contexts/CartContext';
 
 const categories = [
-  { name: 'Gifts', color: 'bg-pink-500', image: '/src/assets/gifts.jpg', isHero: true },
-  { name: 'Toys', color: 'bg-red-500', image: '/src/assets/toys.jpg' },
-  { name: 'Kitchen & Home decor', color: 'bg-orange-500', image: '/src/assets/kitchen-home-decor.jpg' },
-  { name: 'Jewellery', color: 'bg-purple-500', image: '/src/assets/jewellery.jpg' },
-  { name: 'Jhumka', color: 'bg-pink-600', image: '/src/assets/jhumka.jpg' },
-  { name: 'Hair accessories', color: 'bg-indigo-500', image: '/src/assets/hair-accessories.jpg' },
+  { name: 'Gifts', color: 'bg-pink-500', image: '/gifts.jpg', isHero: true },
+  { name: 'Toys', color: 'bg-red-500', image: '/toys.jpg' },
+  { name: 'Kitchen & Home decor', color: 'bg-orange-500', image: '/kitchen-home-decor.jpg' },
+  { name: 'Jewellery', color: 'bg-purple-500', image: '/jewellery.jpg' },
+  { name: 'Jhumka', color: 'bg-pink-600', image: '/jhumka.jpg' },
+  { name: 'Hair accessories', color: 'bg-indigo-500', image: '/hair-accessories.jpg' },
 ];
 
 export default function HomePage() {
