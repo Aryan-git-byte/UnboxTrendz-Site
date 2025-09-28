@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, Star, ShoppingBag, Plus, Share2, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Star, ShoppingBag, Plus, Share2, Check, ChevronLeft, ChevronRight, Package } from 'lucide-react';
 import { supabase, type Product } from '../lib/supabase';
 import { useCart } from '../contexts/CartContext';
 
 export default function ProductDetailPage() {
   const { productId } = useParams<{ productId: string }>();
-  const [product, setProduct] = useState<Product | null>(null);
+  const navigate = useNavigate();
+  const [displayedProduct, setDisplayedProduct] = useState<Product | null>(null);
+  const [parentProduct, setParentProduct] = useState<Product | null>(null);
+  const [siblingVariants, setSiblingVariants] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [copiedProduct, setCopiedProduct] = useState(false);
@@ -16,40 +19,106 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     if (productId) {
-      fetchProduct();
+      fetchProductAndVariants();
     }
   }, [productId]);
 
-  const fetchProduct = async () => {
+  // Reset image index when displayed product changes
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [displayedProduct]);
+
+  const fetchProductAndVariants = async () => {
     if (!productId) return;
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // First, fetch the current product
+      const { data: currentProduct, error: currentError } = await supabase
         .from('products')
         .select('*')
         .eq('id', productId)
         .eq('visible', true)
         .single();
 
-      if (error) throw error;
-      setProduct(data);
+      if (currentError) throw currentError;
+
+      let parentProd: Product | null = null;
+      let variants: Product[] = [];
+      let displayProd = currentProduct;
+
+      if (currentProduct.parent_product_id === null) {
+        // Current product is a parent product
+        parentProd = currentProduct;
+        
+        // Fetch all variants of this parent
+        const { data: variantData, error: variantError } = await supabase
+          .from('products')
+          .select('*')
+          .eq('parent_product_id', currentProduct.id)
+          .eq('visible', true)
+          .order('variant_name');
+
+        if (variantError) throw variantError;
+        variants = variantData || [];
+      } else {
+        // Current product is a variant
+        // Fetch the parent product
+        const { data: parentData, error: parentError } = await supabase
+          .from('products')
+          .select('*')
+          .eq('id', currentProduct.parent_product_id)
+          .eq('visible', true)
+          .single();
+
+        if (parentError) throw parentError;
+        parentProd = parentData;
+        displayProd = currentProduct; // Keep the variant as displayed product
+
+        // Fetch all sibling variants (including the current one)
+        const { data: variantData, error: variantError } = await supabase
+          .from('products')
+          .select('*')
+          .eq('parent_product_id', parentData.id)
+          .eq('visible', true)
+          .order('variant_name');
+
+        if (variantError) throw variantError;
+        variants = variantData || [];
+      }
+
+      setParentProduct(parentProd);
+      setSiblingVariants(variants);
+      setDisplayedProduct(displayProd);
     } catch (error) {
-      console.error('Error fetching product:', error);
+      console.error('Error fetching product and variants:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleVariantSelect = (variant: Product) => {
+    // Update URL and state to show the selected variant
+    navigate(`/shop/${variant.id}`, { replace: true });
+    setDisplayedProduct(variant);
+  };
+
+  const handleParentSelect = () => {
+    if (parentProduct) {
+      navigate(`/shop/${parentProduct.id}`, { replace: true });
+      setDisplayedProduct(parentProduct);
+    }
+  };
+
   const handleAddToCart = () => {
-    if (!product) return;
-    addToCart(product);
+    if (!displayedProduct) return;
+    addToCart(displayedProduct);
     setShowAddToCartSuccess(true);
     setTimeout(() => setShowAddToCartSuccess(false), 2000);
   };
 
   const handleShareProduct = async () => {
-    if (!product) return;
+    if (!displayedProduct) return;
     const productUrl = window.location.href;
     
     try {
@@ -71,15 +140,27 @@ export default function ProductDetailPage() {
   };
 
   const handleImageNavigation = (direction: 'prev' | 'next') => {
-    if (!product || !product.images || product.images.length <= 1) return;
+    if (!displayedProduct || !displayedProduct.images || displayedProduct.images.length <= 1) return;
     
     setCurrentImageIndex(prev => {
       if (direction === 'next') {
-        return prev === product.images.length - 1 ? 0 : prev + 1;
+        return prev === displayedProduct.images.length - 1 ? 0 : prev + 1;
       } else {
-        return prev === 0 ? product.images.length - 1 : prev - 1;
+        return prev === 0 ? displayedProduct.images.length - 1 : prev - 1;
       }
     });
+  };
+
+  const getProductDisplayName = (product: Product) => {
+    if (product.parent_product_id === null) {
+      // This is a parent product
+      return product.name;
+    } else {
+      // This is a variant, show parent name + variant
+      return parentProduct ? 
+        `${parentProduct.name} - ${product.variant_name || 'Variant'}` : 
+        product.name;
+    }
   };
 
   if (loading) {
@@ -111,7 +192,7 @@ export default function ProductDetailPage() {
     );
   }
 
-  if (!product) {
+  if (!displayedProduct) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center py-12">
@@ -130,13 +211,16 @@ export default function ProductDetailPage() {
     );
   }
 
+  // Get the product to use for breadcrumb (prefer parent if available)
+  const breadcrumbProduct = parentProduct || displayedProduct;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Helmet>
-        <title>{product.name} - UnboxTrendz</title>
-        <meta name="description" content={`${product.description} - Buy ${product.name} online at UnboxTrendz. Category: ${product.category}. Price: ₹${product.price}`} />
-        <meta name="keywords" content={`${product.name}, ${product.category}, online shopping India, UnboxTrendz`} />
-        <link rel="canonical" href={`https://unboxtrendz.in/shop/${product.id}`} />
+        <title>{getProductDisplayName(displayedProduct)} - UnboxTrendz</title>
+        <meta name="description" content={`${displayedProduct.description} - Buy ${getProductDisplayName(displayedProduct)} online at UnboxTrendz. Category: ${displayedProduct.category}. Price: ₹${displayedProduct.price}`} />
+        <meta name="keywords" content={`${displayedProduct.name}, ${displayedProduct.category}, online shopping India, UnboxTrendz`} />
+        <link rel="canonical" href={`https://unboxtrendz.in/shop/${displayedProduct.id}`} />
       </Helmet>
 
       {/* Breadcrumb */}
@@ -145,27 +229,27 @@ export default function ProductDetailPage() {
           Shop
         </Link>
         <span className="mx-2">/</span>
-        <Link to={`/shop?category=${encodeURIComponent(product.category)}`} className="hover:text-blue-600 transition-colors">
-          {product.category}
+        <Link to={`/shop?category=${encodeURIComponent(breadcrumbProduct.category)}`} className="hover:text-blue-600 transition-colors">
+          {breadcrumbProduct.category}
         </Link>
         <span className="mx-2">/</span>
-        <span className="text-gray-800">{product.name}</span>
+        <span className="text-gray-800">{breadcrumbProduct.name}</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Image Gallery */}
         <div className="space-y-4">
           <div className="relative bg-white rounded-lg overflow-hidden shadow-md">
-            {product.images && product.images.length > 0 ? (
+            {displayedProduct.images && displayedProduct.images.length > 0 ? (
               <>
                 <img
-                  src={product.images[currentImageIndex]}
-                  alt={`${product.name} - Image ${currentImageIndex + 1}`}
+                  src={displayedProduct.images[currentImageIndex]}
+                  alt={`${getProductDisplayName(displayedProduct)} - Image ${currentImageIndex + 1}`}
                   className="w-full h-auto object-cover"
                 />
                 
                 {/* Navigation arrows - only show if multiple images */}
-                {product.images.length > 1 && (
+                {displayedProduct.images.length > 1 && (
                   <>
                     <button
                       onClick={() => handleImageNavigation('prev')}
@@ -185,9 +269,9 @@ export default function ProductDetailPage() {
                 )}
                 
                 {/* Image counter */}
-                {product.images.length > 1 && (
+                {displayedProduct.images.length > 1 && (
                   <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white text-sm px-3 py-1 rounded-full">
-                    {currentImageIndex + 1} / {product.images.length}
+                    {currentImageIndex + 1} / {displayedProduct.images.length}
                   </div>
                 )}
               </>
@@ -199,9 +283,9 @@ export default function ProductDetailPage() {
           </div>
           
           {/* Thumbnail strip */}
-          {product.images && product.images.length > 1 && (
+          {displayedProduct.images && displayedProduct.images.length > 1 && (
             <div className="flex space-x-2 overflow-x-auto pb-2">
-              {product.images.map((image, index) => (
+              {displayedProduct.images.map((image, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentImageIndex(index)}
@@ -213,7 +297,7 @@ export default function ProductDetailPage() {
                 >
                   <img
                     src={image}
-                    alt={`${product.name} thumbnail ${index + 1}`}
+                    alt={`${getProductDisplayName(displayedProduct)} thumbnail ${index + 1}`}
                     className="w-full h-full object-cover"
                   />
                 </button>
@@ -227,7 +311,7 @@ export default function ProductDetailPage() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
-                {product.category}
+                {displayedProduct.category}
               </span>
               <div className="flex items-center">
                 <Star className="h-5 w-5 text-yellow-500 fill-current" />
@@ -238,19 +322,93 @@ export default function ProductDetailPage() {
               </div>
             </div>
             <h1 className="text-3xl font-bold text-gray-800 mb-4">
-              {product.name}
-              {product.variant_name && product.variant_name !== 'Default' && (
-                <span className="text-xl font-normal text-gray-600 ml-3">
-                  ({product.variant_name})
-                </span>
-              )}
+              {getProductDisplayName(displayedProduct)}
             </h1>
-            <div className="text-3xl font-bold text-blue-600 mb-6">₹{product.price}</div>
+            <div className="text-3xl font-bold text-blue-600 mb-6">₹{displayedProduct.price}</div>
           </div>
+
+          {/* Variant Selection */}
+          {(siblingVariants.length > 0 || (parentProduct && displayedProduct.parent_product_id !== null)) && (
+            <div className="border-t border-b py-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">Available Options</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Show parent product option if we're viewing a variant */}
+                {parentProduct && displayedProduct.parent_product_id !== null && (
+                  <button
+                    onClick={handleParentSelect}
+                    className={`w-full text-left p-3 rounded-lg border transition-all hover:shadow-md ${
+                      displayedProduct.parent_product_id === null
+                        ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-200'
+                        : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
+                        {parentProduct.images && parentProduct.images.length > 0 ? (
+                          <img
+                            src={parentProduct.images[0]}
+                            alt={parentProduct.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                            <ShoppingBag className="h-6 w-6 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm line-clamp-2">{parentProduct.name}</div>
+                        <div className="text-xs text-gray-600 mt-1">Original Product</div>
+                        <div className="text-lg font-bold text-gray-800 mt-1">₹{parentProduct.price}</div>
+                      </div>
+                    </div>
+                  </button>
+                )}
+                
+                {/* Show all variants */}
+                {siblingVariants.map((variant) => (
+                  <button
+                    key={variant.id}
+                    onClick={() => handleVariantSelect(variant)}
+                    className={`w-full text-left p-3 rounded-lg border transition-all hover:shadow-md ${
+                      variant.id === displayedProduct.id
+                        ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-200'
+                        : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
+                        {variant.images && variant.images.length > 0 ? (
+                          <img
+                            src={variant.images[0]}
+                            alt={`${parentProduct ? parentProduct.name : variant.name} - ${variant.variant_name || 'Variant'}`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                            <ShoppingBag className="h-6 w-6 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm line-clamp-2">
+                          {parentProduct ? parentProduct.name : variant.name}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          {variant.variant_name || 'Default Variant'}
+                        </div>
+                        <div className="text-lg font-bold text-gray-800 mt-1">₹{variant.price}</div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Description</h3>
-            <p className="text-gray-600 leading-relaxed">{product.description}</p>
+            <p className="text-gray-600 leading-relaxed">{displayedProduct.description}</p>
           </div>
 
           {/* Action buttons */}
@@ -296,18 +454,24 @@ export default function ProductDetailPage() {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="font-medium text-gray-800">Category:</span>
-                <p className="text-gray-600">{product.category}</p>
+                <p className="text-gray-600">{displayedProduct.category}</p>
               </div>
-              {product.variant_name && product.variant_name !== 'Default' && (
+              {displayedProduct.variant_name && displayedProduct.variant_name !== 'Default' && (
                 <div>
                   <span className="font-medium text-gray-800">Variant:</span>
-                  <p className="text-gray-600">{product.variant_name}</p>
+                  <p className="text-gray-600">{displayedProduct.variant_name}</p>
                 </div>
               )}
               <div>
                 <span className="font-medium text-gray-800">Price:</span>
-                <p className="text-gray-600">₹{product.price}</p>
+                <p className="text-gray-600">₹{displayedProduct.price}</p>
               </div>
+              {parentProduct && displayedProduct.parent_product_id !== null && (
+                <div>
+                  <span className="font-medium text-gray-800">Product Line:</span>
+                  <p className="text-gray-600">{parentProduct.name}</p>
+                </div>
+              )}
             </div>
             
             <div className="bg-blue-50 p-4 rounded-lg">
