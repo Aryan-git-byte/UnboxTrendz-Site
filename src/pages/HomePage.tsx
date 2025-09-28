@@ -11,6 +11,7 @@ const categories = [
   { name: 'Kitchen & Home decor', color: 'bg-orange-500', image: '/kitchen-home-decor.jpg' },
   { name: 'Jewellery', color: 'bg-purple-500', image: '/jewellery.jpg' },
   { name: 'Jhumka', color: 'bg-pink-600', image: '/jhumka.jpg' },
+  { name: 'Earrings', color: 'bg-emerald-500', image: '/earrings.jpg' },
   { name: 'Hair accessories', color: 'bg-indigo-500', image: '/hair-accessories.jpg' },
 ];
 
