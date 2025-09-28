@@ -237,7 +237,14 @@ export default function ProductDetailPage() {
                 <Star className="h-5 w-5 text-yellow-500 fill-current" />
               </div>
             </div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-4">{product.name}</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-4">
+              {product.name}
+              {product.variant_name && product.variant_name !== 'Default' && (
+                <span className="text-xl font-normal text-gray-600 ml-3">
+                  ({product.variant_name})
+                </span>
+              )}
+            </h1>
             <div className="text-3xl font-bold text-blue-600 mb-6">₹{product.price}</div>
           </div>
 
@@ -291,6 +298,12 @@ export default function ProductDetailPage() {
                 <span className="font-medium text-gray-800">Category:</span>
                 <p className="text-gray-600">{product.category}</p>
               </div>
+              {product.variant_name && product.variant_name !== 'Default' && (
+                <div>
+                  <span className="font-medium text-gray-800">Variant:</span>
+                  <p className="text-gray-600">{product.variant_name}</p>
+                </div>
+              )}
               <div>
                 <span className="font-medium text-gray-800">Price:</span>
                 <p className="text-gray-600">₹{product.price}</p>
