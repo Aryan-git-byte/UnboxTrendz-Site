@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Plus, Package, Eye, EyeOff, Edit, Trash2, Upload, X, Loader2, ShoppingBag, Calendar, User, Phone, MapPin, CreditCard, Mail, Home, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Package, Eye, EyeOff, CreditCard as Edit, Trash2, Upload, X, Loader2, ShoppingBag, Calendar, User, Phone, MapPin, CreditCard, Mail, Home, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, type Product, type Order } from '../../lib/supabase';
 
@@ -24,6 +24,8 @@ export default function AdminDashboard() {
     price: '',
     description: '',
     visible: true,
+    parent_product_id: '',
+    variant_name: '',
   });
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
