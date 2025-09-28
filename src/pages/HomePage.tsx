@@ -54,10 +54,12 @@ export default function HomePage() {
 
   const fetchFeaturedProducts = async () => {
     try {
+      // Filter out variants - only show products where parent_product_id is null
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .eq('visible', true)
+        .is('parent_product_id', null) // Only fetch parent products, not variants
         .order('created_at', { ascending: false })
         .limit(6);
 
