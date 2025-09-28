@@ -6,12 +6,12 @@ import { supabase, type Product } from '../lib/supabase';
 import { useCart } from '../contexts/CartContext';
 
 const categories = [
-  { name: 'Toys', color: 'bg-red-500', icon: '🧸' },
-  { name: 'Gifts', color: 'bg-pink-500', icon: '🎁' },
-  { name: 'Kitchen & Home decor', color: 'bg-orange-500', icon: '🏠' },
-  { name: 'Jewellery', color: 'bg-purple-500', icon: '💎' },
-  { name: 'Gadgets', color: 'bg-blue-500', icon: '📱' },
-  { name: 'Stationery', color: 'bg-green-500', icon: '✏️' },
+  { name: 'Gifts', color: 'bg-pink-500', image: '/src/assets/gifts.png', isHero: true },
+  { name: 'Toys', color: 'bg-red-500', image: '/src/assets/toys.png' },
+  { name: 'Kitchen & Home decor', color: 'bg-orange-500', image: '/src/assets/kitchen-home-decor.png' },
+  { name: 'Jewellery', color: 'bg-purple-500', image: '/src/assets/jewellery.png' },
+  { name: 'Jhumka', color: 'bg-pink-600', image: '/src/assets/jhumka.png' },
+  { name: 'Hair accessories', color: 'bg-indigo-500', image: '/src/assets/hair-accessories.png' },
 ];
 
 export default function HomePage() {
@@ -118,51 +118,79 @@ export default function HomePage() {
         </script>
       </Helmet>
 
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold text-gray-800 mb-4">
-              Discover Amazing <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">Toys, Gifts & Trendy Products</span> Online
-            </h1>
-            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-              Shop premium toys, unique gifts, stylish home decor, beautiful jewellery, latest gadgets, and quality stationery at UnboxTrendz. Fast shipping across India. Unbox your trend today!
-            </p>
-            <Link
-              to="/shop"
-              className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
-            >
-              <ShoppingBag className="mr-2 h-5 w-5" />
-              Shop Now
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Categories Section */}
-      <section className="py-16 bg-white">
+      {/* Hero Categories Section */}
+      <section className="py-16 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-800 mb-4">Shop by Category</h2>
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">Shop by Category</h1>
             <p className="text-gray-600">Explore our diverse range of trending products across India's favorite categories</p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-            {categories.map((category) => (
+          
+          {/* Hero Category - Gifts */}
+          {categories.filter(category => category.isHero).map((heroCategory) => (
+            <div key={heroCategory.name} className="mb-12">
               <Link
-                key={category.name}
-                to={`/shop?category=${encodeURIComponent(category.name)}`}
-                className="group"
+                to={`/shop?category=${encodeURIComponent(heroCategory.name)}`}
+                className="group block"
               >
-                <div className="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-gray-100">
-                  <div className={`w-16 h-16 ${category.color} rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300`}>
-                    <span className="text-2xl">{category.icon}</span>
+                <div className="relative bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 border border-gray-100 overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-pink-100 to-purple-100 opacity-50"></div>
+                  <div className="relative z-10 text-center">
+                    <div className="w-32 h-32 mx-auto mb-6 rounded-full overflow-hidden shadow-lg">
+                      <img
+                        src={heroCategory.image}
+                        alt={heroCategory.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        onError={(e) => {
+                          // Fallback to a placeholder if image fails to load
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgdmlld0JveD0iMCAwIDEyOCAxMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiBmaWxsPSIjRjNGNEY2Ii8+Cjx0ZXh0IHg9IjY0IiB5PSI3MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzlDQTNBRiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0Ij5JbWFnZTwvdGV4dD4KPHRleHQgeD0iNjQiIHk9Ijg2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBM0FGIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiPk5vdCBGb3VuZDwvdGV4dD4KPC9zdmc+';
+                        }}
+                      />
+                    </div>
+                    <h2 className="text-3xl font-bold text-gray-800 mb-4 group-hover:text-pink-600 transition-colors">
+                      {heroCategory.name}
+                    </h2>
+                    <p className="text-gray-600 mb-6">Discover amazing {heroCategory.name.toLowerCase()} for every occasion</p>
+                    <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold rounded-full group-hover:from-pink-600 group-hover:to-purple-600 transition-all duration-300">
+                      <ShoppingBag className="mr-2 h-5 w-5" />
+                      Shop {heroCategory.name}
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </div>
                   </div>
-                  <h3 className="text-sm font-semibold text-gray-800 text-center group-hover:text-blue-600 transition-colors">
-                    {category.name}
-                  </h3>
                 </div>
               </Link>
+            </div>
+          ))}
+          
+          {/* Other Categories Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {categories.map((category) => (
+              !category.isHero && (
+                <Link
+                  key={category.name}
+                  to={`/shop?category=${encodeURIComponent(category.name)}`}
+                  className="group"
+                >
+                  <div className="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-gray-100">
+                    <div className="w-20 h-20 mx-auto mb-4 rounded-full overflow-hidden shadow-md">
+                      <img
+                        src={category.image}
+                        alt={category.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        onError={(e) => {
+                          // Fallback to a placeholder if image fails to load
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjRjNGNEY2Ii8+Cjx0ZXh0IHg9IjQwIiB5PSI0NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzlDQTNBRiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIj5JbWFnZTwvdGV4dD4KPC9zdmc+';
+                        }}
+                      />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-800 text-center group-hover:text-blue-600 transition-colors">
+                      {category.name}
+                    </h3>
+                  </div>
+                </Link>
+              )
             ))}
           </div>
         </div>
