@@ -423,7 +423,7 @@ export default function ShopPage() {
 
           {/* Products Grid/List */}
           {loading ? (
-            <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+            <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
                   <div className={`bg-gray-200 ${viewMode === 'grid' ? 'h-64' : 'h-32'}`}></div>
