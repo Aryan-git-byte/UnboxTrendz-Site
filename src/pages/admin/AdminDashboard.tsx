@@ -712,21 +712,24 @@ export default function AdminDashboard() {
                         <h4 className="font-semibold text-gray-800 mb-2">Items:</h4>
                         <div className="space-y-2">
                           {order.order_items.map((item, index) => (
-                            <div key={index} className="flex justify-between items-center text-sm bg-white p-3 rounded-lg">
-                              <div className="flex-1">
-                                <span className="font-medium">{item.name} (x{item.quantity})</span>
-                                {item.product_id && (
-                                  <button
-                                    onClick={() => setViewingImages({ orderId: order.id, itemIndex: index })}
-                                    className="ml-3 inline-flex items-center text-blue-600 hover:text-blue-800"
-                                    title="View product images"
-                                  >
-                                    <ImageIcon className="h-4 w-4 mr-1" />
-                                    View Images
-                                  </button>
-                                )}
+                            <div key={index} className="bg-white p-3 rounded-lg">
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex-1">
+                                  <span className="font-medium text-gray-800">{item.name}</span>
+                                  <span className="text-gray-600 ml-2">(x{item.quantity})</span>
+                                </div>
+                                <span className="font-semibold text-gray-800">₹{item.price * item.quantity}</span>
                               </div>
-                              <span className="font-semibold">₹{item.price * item.quantity}</span>
+                              {item.product_id && (
+                                <button
+                                  onClick={() => setViewingImages({ orderId: order.id, itemIndex: index })}
+                                  className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                  title="View product images"
+                                >
+                                  <ImageIcon className="h-4 w-4 mr-1" />
+                                  View Product Images
+                                </button>
+                              )}
                             </div>
                           ))}
                         </div>
