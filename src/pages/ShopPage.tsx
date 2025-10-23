@@ -36,9 +36,9 @@ const levenshteinDistance = (str1: string, str2: string): number => {
         matrix[i][j] = matrix[i - 1][j - 1];
       } else {
         matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1, // substitution
-          matrix[i][j - 1] + 1,     // insertion
-          matrix[i - 1][j] + 1      // deletion
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
         );
       }
     }
@@ -59,23 +59,19 @@ const getSearchRelevance = (product: Product, query: string): number => {
   const lowerDescription = product.description?.toLowerCase() || '';
   const lowerCategory = product.category.toLowerCase();
 
-  // Exact matches get highest score
   if (lowerName.includes(lowerQuery)) return 100;
   if (lowerDescription.includes(lowerQuery)) return 80;
   if (lowerCategory.includes(lowerQuery)) return 70;
 
-  // Fuzzy matching for typos
   const nameWords = lowerName.split(' ');
   const descWords = lowerDescription.split(' ');
   const queryWords = lowerQuery.split(' ');
 
   let maxScore = 0;
 
-  // Check each query word against product words
   queryWords.forEach(qWord => {
     if (qWord.length < 2) return;
 
-    // Check name words
     nameWords.forEach(nWord => {
       const similarity = calculateSimilarity(qWord, nWord);
       if (similarity > 0.7) {
@@ -83,7 +79,6 @@ const getSearchRelevance = (product: Product, query: string): number => {
       }
     });
 
-    // Check description words
     descWords.forEach(dWord => {
       if (dWord.length > 2) {
         const similarity = calculateSimilarity(qWord, dWord);
@@ -93,7 +88,6 @@ const getSearchRelevance = (product: Product, query: string): number => {
       }
     });
 
-    // Check category similarity
     const catSimilarity = calculateSimilarity(qWord, lowerCategory);
     if (catSimilarity > 0.7) {
       maxScore = Math.max(maxScore, catSimilarity * 50);
@@ -116,7 +110,7 @@ export default function ShopPage() {
   const [targetProductId, setTargetProductId] = useState<string | null>(null);
   const [highlightedProductId, setHighlightedProductId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
-  const [allProducts, setAllProducts] = useState<Product[]>([]); // Store all products for search
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const { addToCart } = useCart();
 
   useEffect(() => {
@@ -139,7 +133,6 @@ export default function ShopPage() {
     }
   }, [searchParams]);
 
-  // Scroll to and highlight specific product when products are loaded
   useEffect(() => {
     if (products.length > 0 && targetProductId && !loading) {
       const targetProduct = products.find(product => product.id === targetProductId);
@@ -169,12 +162,11 @@ export default function ShopPage() {
   const fetchAllProducts = async () => {
     setLoading(true);
     try {
-      // Filter out variants - only show products where parent_product_id is null
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .eq('visible', true)
-        .is('parent_product_id', null); // Only fetch parent products, not variants
+        .is('parent_product_id', null);
 
       if (error) throw error;
       setAllProducts(data || []);
@@ -185,16 +177,13 @@ export default function ShopPage() {
     }
   };
 
-  // Filter and sort products based on search, category, and sort options
   const filteredAndSortedProducts = useMemo(() => {
     let filtered = [...allProducts];
 
-    // Apply category filter
     if (selectedCategory) {
       filtered = filtered.filter(product => product.category === selectedCategory);
     }
 
-    // Apply search filter with fuzzy matching
     if (searchQuery.trim()) {
       const query = searchQuery.trim();
       const searchResults = filtered
@@ -202,16 +191,14 @@ export default function ShopPage() {
           product,
           relevance: getSearchRelevance(product, query)
         }))
-        .filter(result => result.relevance > 30) // Threshold for relevance
+        .filter(result => result.relevance > 30)
         .sort((a, b) => b.relevance - a.relevance)
         .map(result => result.product);
       
       filtered = searchResults;
     }
 
-    // Apply sorting
     if (searchQuery.trim() && sortBy === 'relevance') {
-      // Already sorted by relevance above
       return filtered;
     }
 
@@ -243,7 +230,6 @@ export default function ShopPage() {
     setSearchQuery(query);
     updateSearchParams({ search: query || undefined });
     
-    // Auto-set sort to relevance when searching
     if (query.trim() && sortBy !== 'relevance') {
       setSortBy('relevance');
     }
@@ -267,12 +253,6 @@ export default function ShopPage() {
     setSearchQuery('');
     updateSearchParams({ search: undefined });
     setSortBy('newest');
-  };
-
-  const handleWhatsAppOrder = (product: Product) => {
-    const message = `Hi! I'm interested in ordering:\n\n*${product.name}*\nCategory: ${product.category}\nPrice: ₹${product.price}\n\nPlease let me know about availability and delivery details.`;
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
   };
 
   const handleAddToCart = (product: Product) => {
@@ -303,13 +283,11 @@ export default function ShopPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">Shop</h1>
         <p className="text-gray-600">Discover our amazing collection of trending products</p>
       </div>
 
-      {/* Smart Search Bar */}
       <div className="mb-8">
         <div className="relative max-w-2xl mx-auto">
           <div className="relative">
@@ -344,9 +322,7 @@ export default function ShopPage() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
-        {/* Sidebar Filters */}
         <div className="lg:w-64 flex-shrink-0">
-          {/* Mobile Filter Toggle */}
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="lg:hidden w-full flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-lg mb-4"
@@ -355,7 +331,6 @@ export default function ShopPage() {
             Filters
           </button>
 
-          {/* Filter Panel */}
           <div className={`bg-white rounded-lg shadow-md p-6 ${showFilters ? 'block' : 'hidden lg:block'}`}>
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Categories</h3>
             <div className="space-y-2">
@@ -387,9 +362,7 @@ export default function ShopPage() {
           </div>
         </div>
 
-        {/* Main Content */}
         <div className="flex-1">
-          {/* Controls */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div className="flex items-center space-x-4">
               <select
@@ -421,7 +394,6 @@ export default function ShopPage() {
             </div>
           </div>
 
-          {/* Products Grid/List */}
           {loading ? (
             <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
               {[...Array(6)].map((_, i) => (
@@ -467,7 +439,6 @@ export default function ShopPage() {
                       <Star className="h-3 w-3 text-yellow-500 fill-current" />
                     </div>
                     
-                    {/* Multiple images indicator */}
                     {product.images && product.images.length > 1 && (
                       <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
                         +{product.images.length - 1} more
@@ -475,44 +446,45 @@ export default function ShopPage() {
                     )}
                   </Link>
                   
-                  <div className="p-6 flex-1">
+                  <div className="p-4 flex-1">
                     {highlightedProductId === product.id && (
                       <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-2 text-center">
                         <p className="text-blue-700 text-sm font-medium">📍 Shared Product</p>
                       </div>
                     )}
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-blue-600 font-medium">{product.category}</span>
-                      <span className="text-lg font-bold text-gray-800">₹{product.price}</span>
+                      <span className="text-xs text-blue-600 font-medium">{product.category}</span>
+                      <span className="text-base font-bold text-gray-800">₹{product.price}</span>
                     </div>
                     <Link to={`/shop/${product.id}`}>
-                      <h3 className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2 hover:text-blue-600 transition-colors cursor-pointer">
+                      <h3 className="text-sm font-semibold text-gray-800 mb-1 line-clamp-2 hover:text-blue-600 transition-colors cursor-pointer">
                         {product.name}
                         {product.variant_name && product.variant_name !== 'Default' && (
-                          <span className="text-sm font-normal text-gray-600 ml-2">
+                          <span className="text-xs font-normal text-gray-600 ml-1">
                             ({product.variant_name})
                           </span>
                         )}
                       </h3>
                     </Link>
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">{product.description}</p>
+                    <p className="text-gray-600 text-xs mb-3 line-clamp-2">{product.description}</p>
                     
-                    <div className="space-y-2">
-                      <div className="flex space-x-2 relative">
-                        <button
-                          onClick={() => handleAddToCart(product)}
-                          className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 px-3 rounded-lg font-semibold hover:from-blue-600 hover:to-blue-700 transition-all duration-300 flex items-center justify-center text-sm"
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Add to Cart
-                        </button>
-                        
+                    <div className="space-y-2 relative">
+                      <button
+                        onClick={() => handleAddToCart(product)}
+                        className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 px-3 rounded-lg font-semibold hover:from-blue-600 hover:to-blue-700 transition-all duration-300 flex items-center justify-center text-xs"
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add to Cart
+                      </button>
+                      
+                      <div className="flex space-x-2">
                         <Link
                           to={`/shop/${product.id}`}
-                          className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center"
+                          className="flex-1 py-2 px-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center text-xs"
                           title="View product details"
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-3 w-3 mr-1" />
+                          View
                         </Link>
                         
                         <button
@@ -521,25 +493,24 @@ export default function ShopPage() {
                           title="Share product"
                         >
                           {copiedProductId === product.id ? (
-                            <Check className="h-4 w-4 text-green-600" />
+                            <Check className="h-3 w-3 text-green-600" />
                           ) : (
-                            <Share2 className="h-4 w-4" />
+                            <Share2 className="h-3 w-3" />
                           )}
                         </button>
-                        
-                        {/* Success Messages */}
-                        {showAddToCartSuccessId === product.id && (
-                          <div className="absolute -top-10 left-0 bg-green-600 text-white text-xs px-3 py-1 rounded-lg shadow-lg z-10 animate-pulse">
-                            Product added successfully!
-                          </div>
-                        )}
-                        
-                        {copiedProductId === product.id && (
-                          <div className="absolute -top-10 right-0 bg-blue-600 text-white text-xs px-3 py-1 rounded-lg shadow-lg z-10 animate-pulse">
-                            Link copied!
-                          </div>
-                        )}
                       </div>
+                      
+                      {showAddToCartSuccessId === product.id && (
+                        <div className="absolute -top-10 left-0 bg-green-600 text-white text-xs px-3 py-1 rounded-lg shadow-lg z-10 animate-pulse">
+                          Product added successfully!
+                        </div>
+                      )}
+                      
+                      {copiedProductId === product.id && (
+                        <div className="absolute -top-10 right-0 bg-blue-600 text-white text-xs px-3 py-1 rounded-lg shadow-lg z-10 animate-pulse">
+                          Link copied!
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
