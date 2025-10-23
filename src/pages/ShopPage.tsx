@@ -436,7 +436,7 @@ export default function ShopPage() {
               ))}
             </div>
           ) : products.length > 0 ? (
-            <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+            <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
               {products.map((product) => (
                 <div 
                   key={product.id} 
