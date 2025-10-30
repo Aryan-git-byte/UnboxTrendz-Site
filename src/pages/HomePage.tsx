@@ -5,14 +5,15 @@ import { ArrowRight, Star, ShoppingBag, Plus, Share2, Check, Eye } from 'lucide-
 import { supabase, type Product } from '../lib/supabase';
 import { useCart } from '../contexts/CartContext';
 
+// Reordered categories - Toys and Kitchen & Home decor moved to the end
 const categories = [
   { name: 'Gifts', color: 'bg-pink-500', image: '/gifts.jpg', isHero: true },
-  { name: 'Toys', color: 'bg-red-500', image: '/toys.jpg' },
-  { name: 'Kitchen & Home decor', color: 'bg-orange-500', image: '/kitchen-home-decor.jpg' },
   { name: 'Jewellery', color: 'bg-purple-500', image: '/jewellery.jpg' },
   { name: 'Jhumka', color: 'bg-pink-600', image: '/jhumka.jpg' },
   { name: 'Earrings', color: 'bg-emerald-500', image: '/earrings.jpg' },
   { name: 'Hair accessories', color: 'bg-indigo-500', image: '/hair-accessories.jpg' },
+  { name: 'Kitchen & Home decor', color: 'bg-orange-500', image: '/kitchen-home-decor.jpg' },
+  { name: 'Toys', color: 'bg-red-500', image: '/toys.jpg' },
 ];
 
 export default function HomePage() {
