@@ -4,7 +4,7 @@ import { ShoppingCart, Menu, X, LogOut, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import CartModal from './CartModal';
-import PromoPopup from './PromoPopup';
+// Removed PromoPopup import
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -175,8 +175,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Cart Modal */}
       <CartModal />
 
-      {/* Promotional Popup */}
-      <PromoPopup />
+      {/* Promotional Popup - REMOVED */}
 
       {/* Footer */}
       {!isAdminRoute && (
