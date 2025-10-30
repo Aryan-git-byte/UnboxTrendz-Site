@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
   const [viewingImages, setViewingImages] = useState<{orderId: string, itemIndex: number} | null>(null);
+  const [viewingProductImages, setViewingProductImages] = useState<Product | null>(null);
   const [stats, setStats] = useState({
     totalProducts: 0,
     visibleProducts: 0,
@@ -601,30 +602,71 @@ export default function AdminDashboard() {
                         </form>
                       ) : (
                         <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-4 mb-2">
-                              <h3 className="text-lg font-semibold text-gray-800">{product.name}</h3>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                product.visible 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
-                                {product.visible ? 'Visible' : 'Hidden'}
-                              </span>
-                              {product.parent_product_id && (
-                                <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                                  Variant: {product.variant_name || 'Default'}
-                                </span>
+                          <div className="flex space-x-4 flex-1">
+                            {/* Product Image */}
+                            <div className="flex-shrink-0">
+                              {product.images && product.images.length > 0 ? (
+                                <div className="relative">
+                                  <img
+                                    src={product.images[0]}
+                                    alt={product.name}
+                                    className="w-24 h-24 object-cover rounded-lg border border-gray-200"
+                                    onError={(e) => {
+                                      e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCA5NiA5NiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiBmaWxsPSIjRjNGNEY2Ii8+Cjx0ZXh0IHg9IjQ4IiB5PSI1NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzlDQTNBRiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIj5Ob0ltYWdlPC90ZXh0Pgo8L3N2Zz4=';
+                                    }}
+                                  />
+                                  {product.images.length > 1 && (
+                                    <button
+                                      onClick={() => setViewingProductImages(product)}
+                                      className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center text-white text-xs font-medium hover:bg-opacity-60 transition-all"
+                                    >
+                                      +{product.images.length - 1} more
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center">
+                                  <ImageIcon className="h-8 w-8 text-gray-400" />
+                                </div>
+                              )}
+                              {product.images && product.images.length > 0 && (
+                                <button
+                                  onClick={() => setViewingProductImages(product)}
+                                  className="mt-1 text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center"
+                                >
+                                  <ImageIcon className="h-3 w-3 mr-1" />
+                                  View All ({product.images.length})
+                                </button>
                               )}
                             </div>
-                            <p className="text-gray-600 mb-2">{product.description}</p>
-                            <div className="flex items-center space-x-4 text-sm text-gray-500">
-                              <span>Category: {product.category}</span>
-                              <span>Price: ₹{product.price}</span>
-                              <span>Images: {product.images?.length || 0}</span>
+                            
+                            {/* Product Details */}
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-4 mb-2">
+                                <h3 className="text-lg font-semibold text-gray-800">{product.name}</h3>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  product.visible 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {product.visible ? 'Visible' : 'Hidden'}
+                                </span>
+                                {product.parent_product_id && (
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                                    Variant: {product.variant_name || 'Default'}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-gray-600 mb-2">{product.description}</p>
+                              <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                <span>Category: {product.category}</span>
+                                <span>Price: ₹{product.price}</span>
+                                <span>Images: {product.images?.length || 0}</span>
+                              </div>
                             </div>
                           </div>
-                          <div className="flex space-x-2">
+                          
+                          <div className="flex space-x-2 ml-4">
                             <button
                               onClick={() => setEditingProduct(product)}
                               className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
@@ -711,27 +753,56 @@ export default function AdminDashboard() {
                       <div className="border-t pt-4">
                         <h4 className="font-semibold text-gray-800 mb-2">Items:</h4>
                         <div className="space-y-2">
-                          {order.order_items.map((item, index) => (
-                            <div key={index} className="bg-white p-3 rounded-lg">
-                              <div className="flex justify-between items-start mb-2">
-                                <div className="flex-1">
-                                  <span className="font-medium text-gray-800">{item.name}</span>
-                                  <span className="text-gray-600 ml-2">(x{item.quantity})</span>
+                          {order.order_items.map((item, index) => {
+                            // Find the product in the products list to get its images
+                            const product = products.find(p => p.id === item.id);
+                            
+                            return (
+                              <div key={index} className="bg-white p-3 rounded-lg">
+                                <div className="flex items-start space-x-3">
+                                  {/* Item Image */}
+                                  <div className="flex-shrink-0">
+                                    {item.images && item.images.length > 0 ? (
+                                      <img
+                                        src={item.images[0]}
+                                        alt={item.name}
+                                        className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                                        onError={(e) => {
+                                          e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRjNGNEY2Ii8+Cjx0ZXh0IHg9IjMyIiB5PSIzOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzlDQTNBRiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIj5Ob0ltYWdlPC90ZXh0Pgo8L3N2Zz4=';
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                                        <ImageIcon className="h-6 w-6 text-gray-400" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Item Details */}
+                                  <div className="flex-1">
+                                    <div className="flex justify-between items-start mb-1">
+                                      <div>
+                                        <span className="font-medium text-gray-800">{item.name}</span>
+                                        <span className="text-gray-600 ml-2">(x{item.quantity})</span>
+                                      </div>
+                                      <span className="font-semibold text-gray-800">₹{item.price * item.quantity}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mb-2">Category: {item.category}</p>
+                                    {item.images && item.images.length > 0 && (
+                                      <button
+                                        onClick={() => setViewingImages({ orderId: order.id, itemIndex: index })}
+                                        className="inline-flex items-center text-blue-600 hover:text-blue-800 text-xs font-medium"
+                                        title="View product images"
+                                      >
+                                        <ImageIcon className="h-3 w-3 mr-1" />
+                                        View Images ({item.images.length})
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
-                                <span className="font-semibold text-gray-800">₹{item.price * item.quantity}</span>
                               </div>
-                              {item.product_id && (
-                                <button
-                                  onClick={() => setViewingImages({ orderId: order.id, itemIndex: index })}
-                                  className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium"
-                                  title="View product images"
-                                >
-                                  <ImageIcon className="h-4 w-4 mr-1" />
-                                  View Product Images
-                                </button>
-                              )}
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                         <div className="border-t mt-2 pt-2 flex justify-between items-center font-semibold">
                           <span>Total (including delivery ₹{order.delivery_charge}):</span>
@@ -904,11 +975,10 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* View Product Images Modal */}
+      {/* View Order Item Images Modal */}
       {viewingImages && (() => {
         const order = orders.find(o => o.id === viewingImages.orderId);
         const item = order?.order_items[viewingImages.itemIndex];
-        const product = item?.product_id ? products.find(p => p.id === item.product_id) : null;
         
         return (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -926,13 +996,13 @@ export default function AdminDashboard() {
                   </button>
                 </div>
 
-                {product && product.images && product.images.length > 0 ? (
+                {item && item.images && item.images.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {product.images.map((image, idx) => (
+                    {item.images.map((image, idx) => (
                       <div key={idx} className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
                         <img
                           src={image}
-                          alt={`${product.name} - Image ${idx + 1}`}
+                          alt={`${item.name} - Image ${idx + 1}`}
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             e.currentTarget.src = 'https://via.placeholder.com/400?text=Image+Not+Found';
@@ -954,12 +1024,7 @@ export default function AdminDashboard() {
                     <p><span className="font-medium">Name:</span> {item?.name}</p>
                     <p><span className="font-medium">Price:</span> ₹{item?.price}</p>
                     <p><span className="font-medium">Quantity:</span> {item?.quantity}</p>
-                    {product && (
-                      <>
-                        <p><span className="font-medium">Category:</span> {product.category}</p>
-                        <p><span className="font-medium">Description:</span> {product.description}</p>
-                      </>
-                    )}
+                    <p><span className="font-medium">Category:</span> {item?.category}</p>
                   </div>
                 </div>
 
@@ -976,6 +1041,72 @@ export default function AdminDashboard() {
           </div>
         );
       })()}
+
+      {/* View Product Images Modal */}
+      {viewingProductImages && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">
+                  Product Images - {viewingProductImages.name}
+                </h2>
+                <button
+                  onClick={() => setViewingProductImages(null)}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              {viewingProductImages.images && viewingProductImages.images.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {viewingProductImages.images.map((image, idx) => (
+                    <div key={idx} className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                      <img
+                        src={image}
+                        alt={`${viewingProductImages.name} - Image ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = 'https://via.placeholder.com/400?text=Image+Not+Found';
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <ImageIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">No images available for this product</p>
+                </div>
+              )}
+
+              <div className="mt-6 pt-6 border-t">
+                <h3 className="font-semibold text-gray-800 mb-2">Product Details</h3>
+                <div className="space-y-1 text-sm text-gray-600">
+                  <p><span className="font-medium">Name:</span> {viewingProductImages.name}</p>
+                  <p><span className="font-medium">Category:</span> {viewingProductImages.category}</p>
+                  <p><span className="font-medium">Price:</span> ₹{viewingProductImages.price}</p>
+                  <p><span className="font-medium">Description:</span> {viewingProductImages.description}</p>
+                  {viewingProductImages.variant_name && viewingProductImages.variant_name !== 'Default' && (
+                    <p><span className="font-medium">Variant:</span> {viewingProductImages.variant_name}</p>
+                  )}
+                  <p><span className="font-medium">Status:</span> {viewingProductImages.visible ? 'Visible' : 'Hidden'}</p>
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => setViewingProductImages(null)}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
